@@ -43,8 +43,7 @@ class ToyModule(module.Module):
       tensor_spec.TensorSpec([1, 3], dtypes.int32, name='input')
   ])
   def toy(self, x):
-    r = math_ops.matmul(x, self.w, name='result')
-    return r
+    return math_ops.matmul(x, self.w, name='result')
 
 
 def main(argv):

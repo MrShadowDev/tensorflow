@@ -65,8 +65,7 @@ def RunMetadataLabels(run_metadata):
   """Returns all labels in run_metadata."""
   labels = []
   for dev_stats in run_metadata.step_stats.dev_stats:
-    for node_stats in dev_stats.node_stats:
-      labels.append(node_stats.timeline_label)
+    labels.extend(node_stats.timeline_label for node_stats in dev_stats.node_stats)
   return labels
 
 
@@ -116,13 +115,13 @@ class JitLaunchTest(test.TestCase):
           sess, compiled_op, feeds,
           config_pb2.RunOptions(trace_level=config_pb2.RunOptions.FULL_TRACE),
           run_metadata)
-      print("Compiled Result {}".format(compiled))
+      print(f"Compiled Result {compiled}")
 
       if require_kernel_launch:
         self.assert_(MetadataHasXlaRunOp(run_metadata))
 
         direct = sess.run(direct_op, feeds)
-        print("Direct Result {}".format(direct))
+        print(f"Direct Result {direct}")
 
         if (isinstance(compiled, (tuple, list)) and
             (isinstance(direct, (tuple, list)))):
@@ -594,10 +593,10 @@ class LazyCompilationTest(test.TestCase):
       # times.  Then check that we don't compile the cluster ever again.
 
       for shape in range(10, 50):
-        for _ in range(0, 49):
+        for _ in range(49):
           sess.run(y, feed_dict={x: [0.] * shape})
 
-      for _ in range(0, 50):
+      for _ in range(50):
         run_metadata = config_pb2.RunMetadata()
         sess.run(
             y,
@@ -624,10 +623,10 @@ class LazyCompilationTest(test.TestCase):
       # Then check that the cluster has not been marked as megamorphic.
 
       for shape in range(10, 50):
-        for _ in range(0, 1000):
+        for _ in range(1000):
           sess.run(y, feed_dict={x: [0.] * shape})
 
-      for _ in range(0, 10):
+      for _ in range(10):
         sess.run(y, feed_dict={x: [0.] * 60})
 
       run_metadata = config_pb2.RunMetadata()

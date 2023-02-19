@@ -31,8 +31,7 @@ jitrt = tf_jitrt.TfJitRtExecutor()
 class TfSelect(test.TestCase):
 
   def test_select_1d(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>)
                -> (tensor<?xf32>, tensor<?xi1>, tensor<?xf32>)
         {
@@ -47,6 +46,7 @@ class TfSelect(test.TestCase):
           func.return %0, %1, %2 : tensor<?xf32>, tensor<?xi1>, tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10)

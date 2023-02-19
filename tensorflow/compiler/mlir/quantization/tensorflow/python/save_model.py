@@ -122,7 +122,7 @@ def _restore_output_tensor_names(
           updating_inputs.append(input_name[1:])
           node.input.remove(input_name)
       for updating_input in updating_inputs:
-        node.input.append('^' + output_renaming_map[updating_input])
+        node.input.append(f'^{output_renaming_map[updating_input]}')
   return graph_def
 
 
@@ -175,13 +175,12 @@ def _validate_signatures(
         exported_graph.get_tensor_by_name(tensor_info.name)
       except KeyError as exc:
         try:
-          prefixed_name = signature_key + '_' + tensor_info.name
+          prefixed_name = f'{signature_key}_{tensor_info.name}'
           exported_graph.get_tensor_by_name(prefixed_name)
           tensor_info.name = prefixed_name
         except KeyError:
           raise ValueError(
-              'Cannot find the input tensor with name %s in the graph.'
-              % tensor_info.name
+              f'Cannot find the input tensor with name {tensor_info.name} in the graph.'
           ) from exc
 
     for tensor_info in signature_def.outputs.values():
@@ -189,13 +188,12 @@ def _validate_signatures(
         exported_graph.get_tensor_by_name(tensor_info.name)
       except KeyError as exc:
         try:
-          prefixed_name = signature_key + '_' + tensor_info.name
+          prefixed_name = f'{signature_key}_{tensor_info.name}'
           exported_graph.get_tensor_by_name(prefixed_name)
           tensor_info.name = prefixed_name
         except KeyError:
           raise ValueError(
-              'Cannot find the output tensor with name %s in the graph.'
-              % tensor_info.name
+              f'Cannot find the output tensor with name {tensor_info.name} in the graph.'
           ) from exc
 
   return signature_def_map
@@ -240,14 +238,11 @@ def _find_file_prefix_tensor(graph: ops.Graph) -> Optional[core.Tensor]:
   Returns:
     None if not found. True if a "file_prefix" tensor is found.
   """
-  for op in graph.get_operations():
-    if op.type == '_Arg' and (
-        b'__tf_file_prefix' in op.get_attr('tf_saved_model.index_path')
-    ):
-      candidate_tensor = op.outputs[0]
-      return candidate_tensor
-
-  return None
+  return next(
+      (op.outputs[0] for op in graph.get_operations() if op.type == '_Arg' and
+       (b'__tf_file_prefix' in op.get_attr('tf_saved_model.index_path'))),
+      None,
+  )
 
 
 def _save_function_alias(

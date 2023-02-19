@@ -31,8 +31,7 @@ jitrt = tf_jitrt.TfJitRtExecutor()
 class TfControlflowTest(test.TestCase):
 
   def test_if(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<i1>, %arg1: tensor<i1>, %arg2: tensor<?xf32>,
                    %arg3: tensor<?xf32>) -> tensor<?xf32> {
           %0 = "tf.IfRegion"(%arg0) ({
@@ -59,6 +58,7 @@ class TfControlflowTest(test.TestCase):
              -> tensor<?xf32>
           func.return %0 : tensor<?xf32>
         }"""
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 100)
@@ -78,9 +78,8 @@ class TfControlflowTest(test.TestCase):
       np.testing.assert_allclose(res, arg0 + arg1)
 
   def test_while(self):
-    for specialize in specializations:
-      # Square input until one element is over 100.
-      mlir_function = """
+    # Square input until one element is over 100.
+    mlir_function = """
         func.func @test(%arg0: tensor<?x?xf32>) -> tensor<?x?xf32> {
           %0 = "tf.While"(%arg0)
              {body = @while_body, cond = @while_cond, is_stateless = true}
@@ -104,6 +103,7 @@ class TfControlflowTest(test.TestCase):
              : (tensor<?x?xi1>, tensor<2xi32>) -> tensor<i1>
           func.return %all : tensor<i1>
         }"""
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 100)

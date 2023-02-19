@@ -62,14 +62,12 @@ class _CoreLocation:
     self.core = core
 
   def __eq__(self, other):
-    if not isinstance(other, _CoreLocation):
-      return False
-    return self.x == other.x and self.y == other.y and self.z == other.z and self.core == other.core
+    return (self.x == other.x and self.y == other.y
+            and self.z == other.z and self.core == other.core if isinstance(
+                other, _CoreLocation) else False)
 
   def __ne__(self, other):
-    if not isinstance(other, _CoreLocation):
-      return True
-    return not self == other
+    return not self == other if isinstance(other, _CoreLocation) else True
 
   def __hash__(self):
     return hash((self.x, self.y, self.z, self.core))
@@ -89,9 +87,9 @@ def _create_device_array(shape, device_type, host_id, local_device_ids=None):
 
   # User can specify local_device_ids or use default list for multi host.
   num_local_devices = len(local_device_list)
-  local_device_ids = [
+  local_device_ids = local_device_ids or [
       x + host_id * num_local_devices for x in range(num_local_devices)
-  ] if not local_device_ids else local_device_ids
+  ]
 
   return global_device_ids, local_device_ids, local_device_list
 
@@ -107,14 +105,14 @@ def _create_tpu_topology(core_locations: List[_CoreLocation], num_tasks: int,
     num_devices_per_task: The number of TPU devices local to each task.
   """
 
-  assert min([l.x for l in core_locations]) == 0
-  assert min([l.y for l in core_locations]) == 0
-  assert min([l.z for l in core_locations]) == 0
-  assert min([l.core for l in core_locations]) == 0
-  x_max = max([l.x for l in core_locations])
-  y_max = max([l.y for l in core_locations])
-  z_max = max([l.z for l in core_locations])
-  core_max = max([l.core for l in core_locations])
+  assert min(l.x for l in core_locations) == 0
+  assert min(l.y for l in core_locations) == 0
+  assert min(l.z for l in core_locations) == 0
+  assert min(l.core for l in core_locations) == 0
+  x_max = max(l.x for l in core_locations)
+  y_max = max(l.y for l in core_locations)
+  z_max = max(l.z for l in core_locations)
+  core_max = max(l.core for l in core_locations)
   mesh_shape = [x_max + 1, y_max + 1, z_max + 1, core_max + 1]
 
   device_coordinates = [[l.x, l.y, l.z, l.core] for l in core_locations]
@@ -154,7 +152,7 @@ def tpu_system_init_helper(task_id,
   def _set_global_tpu_array_fn(topology_proto):
     gen_dtensor_ops.d_tensor_set_global_tpu_array(topology_proto)
 
-  with ops.device("/job:" + config.full_job_name() + "/device:TPU_SYSTEM:0"):  # pylint: disable=protected-access
+  with ops.device(f"/job:{config.full_job_name()}/device:TPU_SYSTEM:0"):  # pylint: disable=protected-access
     my_core_ids = _tpu_init_fn()
   logging.info("TPU core IDs: %s", my_core_ids)
 
@@ -270,7 +268,7 @@ def initialize_tpu_system():
   except errors.InvalidArgumentError as e:
     raise errors.NotFoundError(
         None, None,
-        "Initialization failed, no valid TPUs found. " + str(e)) from e
+        f"Initialization failed, no valid TPUs found. {str(e)}") from e
 
   except errors.InternalError as e:
     logging.error("Hit internal error during TPU system initialization. "
@@ -318,8 +316,8 @@ def _enumerate_cores(bounds: List[int], ring_bounds: List[int],
       for host_i in range(ring_i, ring_i + ring_bounds[-1], host_bounds[-1]):
         for host_j in range(ring_j, ring_j + ring_sizes[-1], host_sizes[-1]):
           for i in range(host_i, host_i + host_bounds[-1]):
-            for j in range(host_j, host_j + host_sizes[-1]):
-              results.append(partials[j] + [i])
+            results.extend(partials[j] + [i]
+                           for j in range(host_j, host_j + host_sizes[-1]))
   return results
 
 
@@ -360,8 +358,8 @@ def _enumerate_core_locations(bounds: List[int], ring_bounds: List[int],
   """
 
   num_cores_per_chip = bounds[3]
-  if num_cores_per_chip != 1 and num_cores_per_chip != 2:
-    raise ValueError("Unsupported TPU slice size: %s" % bounds)
+  if num_cores_per_chip not in [1, 2]:
+    raise ValueError(f"Unsupported TPU slice size: {bounds}")
 
   # Translate `axes` from string to integer format.
   axes = [{"x": 0, "y": 1, "z": 2, "core": 3}[axis] for axis in axes]
@@ -380,8 +378,7 @@ def _enumerate_core_locations(bounds: List[int], ring_bounds: List[int],
     host_bounds = [[2, 2, 1, num_cores_per_chip][i] for i in axes]
   # host_sizes is the cumulative products of host_bounts.
   host_sizes = [1]
-  for host_bound in host_bounds:
-    host_sizes.append(host_sizes[-1] * host_bound)
+  host_sizes.extend(host_sizes[-1] * host_bound for host_bound in host_bounds)
   host_size = host_sizes.pop()
   # When can_split_host_across_rings is false, a ring must contain at least as
   # many devices as a host has.
@@ -394,12 +391,11 @@ def _enumerate_core_locations(bounds: List[int], ring_bounds: List[int],
   # Reorder ring_bounds and validate it's element-wise >= host_bounds.
   ring_bounds = [ring_bounds[i] for i in axes]
   if ring_bounds < host_bounds:
-    raise ValueError("ring_bounds %s should be >= host_bounds %s" %
-                     (ring_bounds, host_bounds))
+    raise ValueError(
+        f"ring_bounds {ring_bounds} should be >= host_bounds {host_bounds}")
   ring_sizes = [1]
   # ring_sizes is the cumulative products of ring_bounds.
-  for ring_bound in ring_bounds:
-    ring_sizes.append(ring_sizes[-1] * ring_bound)
+  ring_sizes.extend(ring_sizes[-1] * ring_bound for ring_bound in ring_bounds)
   ring_sizes.pop()
 
   # Enumerate cores in the given iteration order. Each core is represented as a
@@ -435,9 +431,9 @@ def _build_all_reduce_ring(core_locations: List[_CoreLocation],
     return permutation
   logging.vlog(2, "Core locations in: %s", core_locations)
 
-  first_column = min([l.x for l in core_locations])
-  first_row = min([l.y for l in core_locations])
-  same_z = (len(set([l.z for l in core_locations])) == 1)
+  first_column = min(l.x for l in core_locations)
+  first_row = min(l.y for l in core_locations)
+  same_z = len({l.z for l in core_locations}) == 1
   logging.vlog(2, "first_column: %d", first_column)
   logging.vlog(2, "first_row: %d", first_row)
   logging.vlog(2, "same_z: %s", same_z)
@@ -555,7 +551,7 @@ def _build_orthogonal_rings(
         core_locations[g + i] for g in range(0, num_cores, ring_size)
     ]
 
-  num_rings = int(num_cores / ring_size)
+  num_rings = num_cores // ring_size
   permutation = _build_all_reduce_ring(
       transposed[:num_rings], rotate=rotate_ring_across_rings)
   for r in range(0, num_cores, num_rings):
@@ -638,9 +634,9 @@ def create_tpu_mesh(
   if ring_axes is None:
     ring_axes = ["core", "x", "y", "z"]
   elif len(ring_axes) != 4:
-    raise ValueError("Expected 4 elements in ring_axes, got %s" % ring_axes)
+    raise ValueError(f"Expected 4 elements in ring_axes, got {ring_axes}")
   elif sorted(ring_axes) != ["core", "x", "y", "z"]:
-    raise ValueError("Invalid ring_axes value: %s" % ring_axes)
+    raise ValueError(f"Invalid ring_axes value: {ring_axes}")
   logging.info("Actual ring_axes: %s", ring_axes)
 
   # Validate ring_bounds values.
@@ -651,10 +647,11 @@ def create_tpu_mesh(
   if ring_bounds is None:
     ring_bounds = topology_shape
   elif len(ring_bounds) != 4:
-    raise ValueError("Expected 4 elements in ring_bounds, got %s" % ring_bounds)
+    raise ValueError(f"Expected 4 elements in ring_bounds, got {ring_bounds}")
   elif ring_bounds > topology_shape:
-    raise ValueError("ring_bounds %s should be <= topology sizes %s" %
-                     (ring_bounds, topology_shape))
+    raise ValueError(
+        f"ring_bounds {ring_bounds} should be <= topology sizes {topology_shape}"
+    )
   logging.info("Actual ring_bounds: %s", ring_bounds)
 
   # Compute ring_size, the number of cores in a ring.

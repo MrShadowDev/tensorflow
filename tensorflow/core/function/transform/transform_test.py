@@ -50,10 +50,7 @@ class Model(module_lib.Module):
   @def_function.function
   def f(self, x, y, add_2):
     r = math_ops.add(x, y, name="x_plus_y")
-    if add_2:
-      return r + 2
-    else:
-      return r
+    return r + 2 if add_2 else r
 
 
 def apply_transform(f, transform_fn):

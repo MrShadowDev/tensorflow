@@ -61,10 +61,7 @@ def multiplex(cond, a, b, name=None):
     A tf.Tensor with elements from `a` where `cond` is True, and elements
     from `b` elsewhere.
   """
-  if not isinstance(cond, (list, tuple)):
-    # Support "old" use of multiplex where `cond` and `a` are tensors,
-    # not lists of tensors.
-    return examples_multiplex_dense(
-        cond=[cond], a_values=[a], b_values=b, name=name)
-  return examples_multiplex_dense(
-      cond=cond, a_values=a, b_values=b, name=name)
+  return (examples_multiplex_dense(
+      cond=cond, a_values=a, b_values=b, name=name) if isinstance(
+          cond, (list, tuple)) else examples_multiplex_dense(
+              cond=[cond], a_values=[a], b_values=b, name=name))

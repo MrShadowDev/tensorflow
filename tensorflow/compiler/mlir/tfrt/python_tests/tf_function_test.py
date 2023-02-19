@@ -34,9 +34,7 @@ jitrt = tf_jitrt.TfJitRtExecutor()
 class TfFunction(test.TestCase):
 
   def test_func_0(self):
-    for specialize in specializations:
-      for vectorize in vectorization:
-        mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<1x?xf32>,
                        %arg1: tensor<1x?xf32>,
                        %arg2: tensor<1x?xf32>) -> tensor<1x?xf32> {
@@ -55,6 +53,8 @@ class TfFunction(test.TestCase):
           return %4 : tensor<1x?xf32>
         }"""
 
+    for specialize in specializations:
+      for vectorize in vectorization:
         compiled = jitrt.compile(mlir_function, 'test', specialize, vectorize)
 
         d0 = np.random.randint(128, 256)
@@ -74,8 +74,7 @@ class TfFunction(test.TestCase):
         np.testing.assert_allclose(res, v4, atol=1e-06)
 
   def test_func_1(self):
-    for vectorize in vectorization:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<*xf32> {rt.constraint = "rank"})
             -> (tensor<*xf32>, tensor<*xf32>) {
           %c = "tf.Const"() {value = dense<1.000000e+00> : tensor<f32>}
@@ -87,6 +86,7 @@ class TfFunction(test.TestCase):
           return %0, %1 : tensor<*xf32>, tensor<*xf32>
         }"""
 
+    for vectorize in vectorization:
       compiled = jitrt.compile(mlir_function, 'test',
                                tf_jitrt.Specialization.ALWAYS, vectorize)
 
@@ -103,8 +103,7 @@ class TfFunction(test.TestCase):
       np.testing.assert_allclose(res1, v1, atol=0.0)
 
   def test_func_2(self):
-    for vectorize in vectorization:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<*xf32> {rt.constraint = "rank"},
                    %arg1: tensor<?x?xf32>,
                    %arg2: tensor<?x?xf32>,
@@ -118,6 +117,7 @@ class TfFunction(test.TestCase):
           return %2 : tensor<*xf32>
         }"""
 
+    for vectorize in vectorization:
       compiled = jitrt.compile(mlir_function, 'test',
                                tf_jitrt.Specialization.ALWAYS, vectorize)
 
@@ -140,8 +140,7 @@ class TfFunction(test.TestCase):
         np.testing.assert_allclose(res, v3, atol=0.0)
 
   def test_func_3(self):
-    for vectorize in vectorization:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<i32>, %arg1: tensor<i32>)
             -> (tensor<i32>, tensor<i32>) {
           %c = "tf.Const"() {value = dense<1> : tensor<i32>}
@@ -153,6 +152,7 @@ class TfFunction(test.TestCase):
         return %0, %1 : tensor<i32>, tensor<i32>
       }"""
 
+    for vectorize in vectorization:
       compiled = jitrt.compile(mlir_function, 'test',
                                tf_jitrt.Specialization.ALWAYS, vectorize)
 

@@ -64,13 +64,11 @@ class DTensorDevice(object):
         is per mesh. 0 for no limits from DTensor. Default is 8.
     """
     if any(not isinstance(mesh, layout_lib.Mesh) for mesh in meshes):
-      raise TypeError(
-          "Expected a flat list of Mesh objects, got {}".format(meshes))
+      raise TypeError(f"Expected a flat list of Mesh objects, got {meshes}")
     global _next_device_number
     ctx = context.context()
     with _next_device_number_lock:
-      self.name = "{}/device:CUSTOM:{}".format(ctx.host_address_space(),
-                                               _next_device_number)
+      self.name = f"{ctx.host_address_space()}/device:CUSTOM:{_next_device_number}"
       _next_device_number += 1
     device, device_info = _pywrap_dtensor_device.Allocate(self.name)
     context.register_custom_device(device, self.name, device_info)
@@ -118,7 +116,7 @@ class DTensorDevice(object):
       ts_local_device_ids.append(device_spec.task)
       ts_local_devices.append(device_spec.replace(device_type="CPU"))
 
-    if not ts_local_device_ids or not ts_local_device_ids:
+    if not ts_local_device_ids:
       logging.info(
           "Cannot create tpu system mesh as %s has no `TPU:0` local device "
           "found", tpu_mesh.to_string())
@@ -149,8 +147,7 @@ class DTensorDevice(object):
                                          self._is_async, True,
                                          self._in_flight_nodes_limit)
           self._meshes.add(mesh.host_mesh())
-          embedding_host_mesh = self._create_embedding_host_mesh(mesh)
-          if embedding_host_mesh:
+          if embedding_host_mesh := self._create_embedding_host_mesh(mesh):
             logging.info(
                 "Registering embedding host mesh %s on each client for mesh %s",
                 embedding_host_mesh.to_string(), mesh.to_string())
@@ -202,7 +199,7 @@ class DTensorDevice(object):
     self._register_mesh(layout.mesh)
     with ops.device(self.name):
       if all(isinstance(t, sparse_tensor.SparseTensor) for t in tensors):
-        if not all(t.shape == tensors[0].shape for t in tensors):
+        if any(t.shape != tensors[0].shape for t in tensors):
           raise TypeError("All input SparseTensors to Pack must be same shape.")
         is_sparse = True
         tensors = [t.indices for t in tensors] + [t.values for t in tensors] + [
@@ -256,18 +253,18 @@ class DTensorDevice(object):
     except core._NotOkStatusException as e:  # pylint: disable=protected-access
       raise core._status_to_exception(e) from None  # pylint: disable=protected-access
 
-    is_sparse = _pywrap_dtensor_device.IsSparseDTensor(
+    if is_sparse := _pywrap_dtensor_device.IsSparseDTensor(
         context.context()._handle,  # pylint: disable=protected-access.
         dtensor,
-        self._device_info)
-    if is_sparse:
-      result = []
-      for i in range(len(tensors) // 3):
-        result.append(
-            sparse_tensor.SparseTensor(tensors[i],
-                                       tensors[i + len(tensors) // 3],
-                                       tensors[i + 2 * len(tensors) // 3]))
-      return result
+        self._device_info,
+    ):
+      return [
+          sparse_tensor.SparseTensor(
+              tensors[i],
+              tensors[i + len(tensors) // 3],
+              tensors[i + 2 * len(tensors) // 3],
+          ) for i in range(len(tensors) // 3)
+      ]
     else:
       return tensors
 

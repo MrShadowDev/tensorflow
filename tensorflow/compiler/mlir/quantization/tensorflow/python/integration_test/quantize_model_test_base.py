@@ -223,16 +223,13 @@ class QuantizedModelTest(test.TestCase, parameterized.TestCase):
     ):
       return True
 
-    # Check the graph genederated from user defined functions
-    for func in graphdef.library.function:
-      if self._contains_op_with_name_and_attribute(
-          nodes=func.node_def,
-          op_name=op_name,
-          attr_name=attr_name,
-          attr_val=attr_val,
-      ):
-        return True
-    return False
+    return any(
+        self._contains_op_with_name_and_attribute(
+            nodes=func.node_def,
+            op_name=op_name,
+            attr_name=attr_name,
+            attr_val=attr_val,
+        ) for func in graphdef.library.function)
 
   def _count_ops(
       self,
@@ -772,6 +769,9 @@ class QuantizedModelTest(test.TestCase, parameterized.TestCase):
       return in_placeholder
 
   def _create_gather_model(self, use_variable):
+
+
+
     class GatherModel(autotrackable.AutoTrackable):
       """A simple model with a single gather."""
 
@@ -783,10 +783,7 @@ class QuantizedModelTest(test.TestCase, parameterized.TestCase):
         """
         super(GatherModel, self).__init__()
         w_val = np.random.randn(128, 32).astype('f4')
-        if use_variable:
-          self.w = variables.Variable(w_val)
-        else:
-          self.w = w_val
+        self.w = variables.Variable(w_val) if use_variable else w_val
 
       @def_function.function(
           input_signature=[
@@ -801,6 +798,7 @@ class QuantizedModelTest(test.TestCase, parameterized.TestCase):
         """Performs a gather operation."""
         out = array_ops.gather_v2(self.w, input_tensor)
         return {'output': out}
+
 
     return GatherModel(use_variable)
 

@@ -36,8 +36,7 @@ class ToyModule(module.Module):
   @def_function.function(
       input_signature=[tensor_spec.TensorSpec([], dtypes.int32, name='input')])
   def toy(self, x):
-    r = math_ops.pow(x, 3, name='result')
-    return r
+    return math_ops.pow(x, 3, name='result')
 
 
 def main(argv):

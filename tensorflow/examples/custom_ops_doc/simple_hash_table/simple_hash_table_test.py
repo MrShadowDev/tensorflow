@@ -36,8 +36,7 @@ class SimpleHashTableTest(tf.test.TestCase, parameterized.TestCase):
     result2 = hash_table.find(1, -999)
     hash_table.remove(1)
     result3 = hash_table.find(1, -999)
-    results = tf.stack((result1, result2, result3))
-    return results  # expect [-999, 100, -999]
+    return tf.stack((result1, result2, result3))
 
   # Test of "create, find, insert, find" in eager mode.
   @parameterized.named_parameters(('int32_float', tf.int32, float),

@@ -55,7 +55,7 @@ class ApproxTopkTest(test.TestCase, parameterized.TestCase):
     gt_sets = [set(np.asarray(x)) for x in ground_truth_neighbors]
 
     def hits_per_q(q, nn_per_q):
-      return len(list(x for x in nn_per_q if x.item() in gt_sets[q]))
+      return len([x for x in nn_per_q if x.item() in gt_sets[q]])
 
     hits = sum(
         hits_per_q(q, nn_per_q) for q, nn_per_q in enumerate(result_neighbors))
@@ -70,7 +70,7 @@ class ApproxTopkTest(test.TestCase, parameterized.TestCase):
       ))
   def test_non_fused_max_k(self, k, row_size, num_rows, aggregate_to_topk):
     row = np.arange(row_size, dtype=np.float32)
-    db = np.stack(list(self._rng.permutation(row) for _ in range(num_rows)))
+    db = np.stack([self._rng.permutation(row) for _ in range(num_rows)])
 
     @function(jit_compile=True)
     def ann(db, k):
@@ -94,7 +94,7 @@ class ApproxTopkTest(test.TestCase, parameterized.TestCase):
   def test_non_fused_min_k(self, k, row_size, num_rows, aggregate_to_topk):
     # Use the new rng api
     row = np.arange(row_size, dtype=np.float32)
-    db = np.stack(list(self._rng.permutation(row) for _ in range(num_rows)))
+    db = np.stack([self._rng.permutation(row) for _ in range(num_rows)])
 
     @function(jit_compile=True)
     def ann(db, k=10):
@@ -193,7 +193,7 @@ class ApproxTopkTest(test.TestCase, parameterized.TestCase):
       ))
   def test_gradients(self, dtype, k, row_size, num_rows):
     row = np.arange(row_size, dtype=np.float32)
-    db = np.stack(list(self._rng.permutation(row) for _ in range(num_rows)))
+    db = np.stack([self._rng.permutation(row) for _ in range(num_rows)])
     out_grads = self._rng.random([num_rows, k])
 
     @function(jit_compile=True)
@@ -228,8 +228,8 @@ class ApproxTopkTest(test.TestCase, parameterized.TestCase):
     num_rows = 10
 
     row = np.arange(row_size, dtype=np.float32)
-    db1 = np.stack(list(self._rng.permutation(row) for _ in range(num_rows)))
-    db2 = np.stack(list(self._rng.permutation(row) for _ in range(num_rows)))
+    db1 = np.stack([self._rng.permutation(row) for _ in range(num_rows)])
+    db2 = np.stack([self._rng.permutation(row) for _ in range(num_rows)])
 
     @function(jit_compile=True)
     def ann(db1, db2):

@@ -40,13 +40,13 @@ class FIFOQueueTest(xla_test.XLATestCase):
       self.assertEqual(1, self.evaluate(q.size()))
 
   def testMultipleDequeues(self):
-    with self.session(), self.test_scope():
+    with (self.session(), self.test_scope()):
       q = data_flow_ops.FIFOQueue(10, [dtypes_lib.int32], shapes=[()])
       self.evaluate(q.enqueue([1]))
       self.evaluate(q.enqueue([2]))
       self.evaluate(q.enqueue([3]))
       a, b, c = self.evaluate([q.dequeue(), q.dequeue(), q.dequeue()])
-      self.assertAllEqual(set([1, 2, 3]), set([a, b, c]))
+      self.assertAllEqual({1, 2, 3}, {a, b, c})
 
   def testQueuesDontShare(self):
     with self.session(), self.test_scope():
@@ -113,7 +113,7 @@ class FIFOQueueTest(xla_test.XLATestCase):
       self.assertItemsEqual(elems, results)
 
   def testDequeue(self):
-    with self.session(), self.test_scope():
+    with (self.session(), self.test_scope()):
       q = data_flow_ops.FIFOQueue(10, dtypes_lib.float32)
       elems = [10.0, 20.0, 30.0]
       enqueue_ops = [q.enqueue((x,)) for x in elems]
@@ -122,9 +122,9 @@ class FIFOQueueTest(xla_test.XLATestCase):
       for enqueue_op in enqueue_ops:
         enqueue_op.run()
 
-      for i in range(len(elems)):
+      for elem in elems:
         vals = self.evaluate(dequeued_t)
-        self.assertEqual([elems[i]], vals)
+        self.assertEqual([elem], vals)
 
   def testEnqueueAndBlockingDequeue(self):
     with self.session() as sess, self.test_scope():
@@ -157,7 +157,7 @@ class FIFOQueueTest(xla_test.XLATestCase):
         self.assertEqual([elem], result)
 
   def testMultiEnqueueAndDequeue(self):
-    with self.session() as sess, self.test_scope():
+    with (self.session() as sess, self.test_scope()):
       q = data_flow_ops.FIFOQueue(10, (dtypes_lib.int32, dtypes_lib.float32))
       elems = [(5, 10.0), (10, 20.0), (15, 30.0)]
       enqueue_ops = [q.enqueue((x, y)) for x, y in elems]
@@ -166,9 +166,9 @@ class FIFOQueueTest(xla_test.XLATestCase):
       for enqueue_op in enqueue_ops:
         enqueue_op.run()
 
-      for i in range(len(elems)):
+      for elem in elems:
         x_val, y_val = sess.run(dequeued_t)
-        x, y = elems[i]
+        x, y = elem
         self.assertEqual([x], x_val)
         self.assertEqual([y], y_val)
 

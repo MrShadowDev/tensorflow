@@ -43,8 +43,8 @@ MeshDimension = collections.namedtuple('MeshDimension', ['name', 'size'])
 
 def _compute_mesh_strides(mesh_dims: List[MeshDimension]) -> List[int]:
   strides = [1]
-  for idx, dim in enumerate(reversed(mesh_dims[1:])):
-    strides.append(strides[idx] * dim.size)
+  strides.extend(strides[idx] * dim.size
+                 for idx, dim in enumerate(reversed(mesh_dims[1:])))
   strides.reverse()
   return strides
 
@@ -140,8 +140,8 @@ class Mesh(_pywrap_dtensor_device.Mesh):
     distance = flat_global_device_ids[0]
     if any(
         (gid - i != distance) for i, gid in enumerate(flat_global_device_ids)):
-      raise ValueError('global_device_ids must sequentially increase: %s' %
-                       global_device_ids)
+      raise ValueError(
+          f'global_device_ids must sequentially increase: {global_device_ids}')
     # LINT.ThenChange(//tensorflow/dtensor/cc/dtensor_device.cc)
 
     # TODO(b/242201545): This class is only for args type transformation for
@@ -183,8 +183,9 @@ class Mesh(_pywrap_dtensor_device.Mesh):
         list(local_devices_set)[0].device_type == 'CPU')
     if not local_device_only_contains_host_cpu and len(local_devices) != len(
         local_devices_set):
-      raise ValueError('Duplicate devices found in mesh specification %s.' %
-                       [d for d in local_devices if local_devices.count(d) > 1])
+      raise ValueError(
+          f'Duplicate devices found in mesh specification {[d for d in local_devices if local_devices.count(d) > 1]}.'
+      )
 
     if len(local_device_ids) != len(local_devices):
       raise ValueError(
@@ -193,18 +194,17 @@ class Mesh(_pywrap_dtensor_device.Mesh):
     if len(local_device_ids) > len(np.ravel(global_device_ids)):
       raise ValueError('Cannot have more local than gobal device IDs.')
 
-    device_types = set([device.device_type for device in local_devices])
+    device_types = {device.device_type for device in local_devices}
     if not device_types:
-      device_types = set([device.device_type for device in global_devices])
+      device_types = {device.device_type for device in global_devices}
     if None in device_types:
       raise ValueError('device_type is required')
     if len(device_types) > 1:
-      raise ValueError('Devices containing multiple device_types : %s' %
-                       device_types)
+      raise ValueError(f'Devices containing multiple device_types : {device_types}')
     device_type = device_types.pop()
     if use_xla_spmd and device_type != 'TPU':
-      raise ValueError('XLA SPMD is not currently not supported for %s mesh.' %
-                       device_type)
+      raise ValueError(
+          f'XLA SPMD is not currently not supported for {device_type} mesh.')
     # Set object's state.
     self._device_type = device_type
     self._dim_names = dim_names
@@ -339,7 +339,7 @@ class Mesh(_pywrap_dtensor_device.Mesh):
       (name, mesh_dim_strs, global_id_str, local_id_str, dev_str,
        global_dev_str_or_use_xla_spmd, use_xla_spmd) = mesh_parts
     else:
-      raise ValueError('Invalid mesh string : %s' % mesh_str)
+      raise ValueError(f'Invalid mesh string : {mesh_str}')
 
     # Load mesh proto.
     mesh_proto = layout_pb2.MeshProto()
@@ -395,13 +395,13 @@ class Mesh(_pywrap_dtensor_device.Mesh):
       global_devices = [
           spec.replace(device_type='CPU') for spec in self._global_devices
       ]
-    h_mesh = Mesh(
+    return Mesh(
         self._dim_names,
         self._global_device_ids,
         self.local_device_ids(),
         np.ravel(device_array).tolist(),
-        global_devices=global_devices)
-    return h_mesh
+        global_devices=global_devices,
+    )
 
   def local_device_locations(self) -> List[Dict[str, int]]:
     """Returns a list of local device locations.
@@ -453,13 +453,10 @@ class Mesh(_pywrap_dtensor_device.Mesh):
         range(self.dim_size(dim_name)) for dim_name in self._dim_names
     ]
     mesh_pos = itertools.product(*idx_ranges)
-    mapping = {}
-    for device_id, device_pos in enumerate(mesh_pos):
-      device_loc = {}
-      for dim_name, dim_index in zip(self._dim_names, device_pos):
-        device_loc[dim_name] = dim_index
-      mapping[device_id] = device_loc
-    return mapping
+    return {
+        device_id: dict(zip(self._dim_names, device_pos))
+        for device_id, device_pos in enumerate(mesh_pos)
+    }
 
 
 # TODO(hthu): Consider making this class immutable.
@@ -525,7 +522,7 @@ class Layout(object):
     # Validate sharding spec
     for _, dim_sharding in enumerate(sharding_specs):
       # If special value no need to check for uniqueness, just skip.
-      if dim_sharding == UNSHARDED or dim_sharding == MATCH:
+      if dim_sharding in [UNSHARDED, MATCH]:
         continue
       # Check dim_sharding is unique.
       if sharding_specs.count(dim_sharding) > 1:
@@ -600,8 +597,8 @@ class Layout(object):
     layout_parts = layout_str.split(' ')
     if len(layout_parts) != 2:
       raise ValueError(
-          'layout string must contain two parts: specs and mesh. But got {}.'
-          .format(layout_str))
+          f'layout string must contain two parts: specs and mesh. But got {layout_str}.'
+      )
 
     sharding_specs_str = layout_parts[0].replace('sharding_specs:', '')
     mesh_str = layout_parts[1].replace('mesh:', '')
@@ -609,8 +606,7 @@ class Layout(object):
     sharding_specs = sharding_specs_str.split(',')[:-1]
 
     mesh = Mesh.from_string(mesh_str)
-    layout = Layout(sharding_specs, mesh)
-    return layout
+    return Layout(sharding_specs, mesh)
 
   @staticmethod
   def inner_sharded(mesh: Mesh, inner_dim: str, rank: int) -> 'Layout':
@@ -619,7 +615,7 @@ class Layout(object):
 
   def is_fully_replicated(self) -> bool:
     """Returns True if all tensor axes are replicated."""
-    return all([self.num_shards(i) == 1 for i in range(self.rank)])
+    return all(self.num_shards(i) == 1 for i in range(self.rank))
 
   def mesh_proto(self) -> layout_pb2.MeshProto:
     """Returns the underlying mesh in Protobuf format."""
@@ -630,9 +626,7 @@ class Layout(object):
     dim_sharding = self.sharding_specs[idx]
     if dim_sharding == UNSHARDED:
       return 1
-    if dim_sharding == MATCH:
-      return -1
-    return self.mesh.dim_size(dim_sharding)
+    return -1 if dim_sharding == MATCH else self.mesh.dim_size(dim_sharding)
 
   def offset_to_shard(self):
     """Mapping from offset in a flattened list to shard index."""
@@ -674,7 +668,7 @@ class Layout(object):
     sharding_spec_str = 'sharding_specs:'
     # Add comma after each instruction.
     for spec in self.sharding_specs:
-      sharding_spec_str += spec + ','
+      sharding_spec_str += f'{spec},'
 
-    mesh_str = 'mesh:' + self.mesh.to_string()
-    return sharding_spec_str + ' ' + mesh_str
+    mesh_str = f'mesh:{self.mesh.to_string()}'
+    return f'{sharding_spec_str} {mesh_str}'

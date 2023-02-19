@@ -69,9 +69,9 @@ def serialize(to_serialize: Serializable) -> SerializedTraceType:
   """Converts Serializable to a proto SerializedTraceType."""
 
   if not isinstance(to_serialize, Serializable):
-    raise ValueError("Can not serialize " + type(to_serialize).__name__ +
-                     " since it is not Serializable. For object " +
-                     str(to_serialize))
+    raise ValueError(
+        f"Can not serialize {type(to_serialize).__name__} since it is not Serializable. For object {str(to_serialize)}"
+    )
   actual_proto = to_serialize.experimental_as_proto()
 
   if not isinstance(actual_proto, to_serialize.experimental_type_proto()):

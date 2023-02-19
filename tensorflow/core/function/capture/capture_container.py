@@ -125,11 +125,7 @@ class FunctionCaptures(object):
 
   def get_by_ref_snapshot(self) -> Mapping[Hashable, Any]:
     """Get a snapshot of current values of by-ref captures."""
-    snapshot = {}
-    for key, capture in self._by_ref.items():
-      func = capture.external
-      snapshot[key] = func()
-    return snapshot
+    return {key: capture.external() for key, capture in self._by_ref.items()}
 
   # TODO(panzf): Use FunctionType/TraceType to create placeholder here.
   def _create_capture_placeholder(self, func: Callable[[], Any]) -> ...:
@@ -147,7 +143,7 @@ class FunctionCaptures(object):
       if isinstance(value, core.Tensor):
         return_flat.append(None)
         tensor_spec_flat.append(type_spec.type_spec_from_value(value))
-      elif isinstance(value, set) or isinstance(value, frozenset):
+      elif isinstance(value, (set, frozenset)):
         raise NotImplementedError(
             (f"Side input returned by '{inspect.getsource(func).strip()}' "
              f"has element of {type(value)} type, which is currently not "

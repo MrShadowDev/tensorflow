@@ -31,8 +31,7 @@ jitrt = tf_jitrt.TfJitRtExecutor()
 class TfReshapeTest(test.TestCase):
 
   def test_reshape_unknown_1d(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>, %arg1: tensor<2xi32>)
             -> tensor<?x?xf32> {
           %0 = "tf.Reshape"(%arg0, %arg1)
@@ -40,6 +39,7 @@ class TfReshapeTest(test.TestCase):
           func.return %0 : tensor<?x?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10) * 2
@@ -59,8 +59,7 @@ class TfReshapeTest(test.TestCase):
         [res] = jitrt.execute(compiled, [arg0, shape])
 
   def test_reshape_unknown_2d(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?x?xf32>, %arg1: tensor<1xi32>)
             -> tensor<?xf32> {
           %0 = "tf.Reshape"(%arg0, %arg1)
@@ -68,6 +67,7 @@ class TfReshapeTest(test.TestCase):
           func.return %0 : tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10) * 2
@@ -88,8 +88,7 @@ class TfReshapeTest(test.TestCase):
         [res] = jitrt.execute(compiled, [arg0, shape])
 
   def test_reshape_zero_dim(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>, %arg1: tensor<1xi32>)
             -> tensor<?xf32> {
           %0 = "tf.Reshape"(%arg0, %arg1)
@@ -97,6 +96,7 @@ class TfReshapeTest(test.TestCase):
           func.return %0 : tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       empty = np.array([]).astype(np.float32)
@@ -118,8 +118,7 @@ class TfReshapeTest(test.TestCase):
         [res] = jitrt.execute(compiled, [empty, one])
 
   def test_reshape_zero_dim_3d(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>, %arg1: tensor<3xi32>)
             -> tensor<?x?x?xf32> {
           %0 = "tf.Const"() { value = dense<[3, 0, 5]> : tensor<3xi32> }
@@ -131,6 +130,7 @@ class TfReshapeTest(test.TestCase):
           func.return %2 : tensor<?x?x?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       empty = np.array([]).astype(np.float32)

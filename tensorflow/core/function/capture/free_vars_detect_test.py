@@ -263,16 +263,16 @@ class FreeVarDetectionTest(parameterized.TestCase):
   def test_method_w_self_as_arg(self):
     x = 1
 
-    class Foo():
+
+
+    class Foo:
 
       def f(self):
         return self.g(self)
 
       def g(self, obj):
-        if obj != self:
-          return x
-        else:
-          return -x
+        return x if obj != self else -x
+
 
     foo = Foo()
     func_map = free_vars_detect._detect_function_free_vars(foo.f)
@@ -312,9 +312,13 @@ class FreeVarDetectionTest(parameterized.TestCase):
   def test_self_inside_function_w_multiple_closures(self):
     # Test when a function contins multiple closures
 
-    class Foo():
+
+
+
+    class Foo:
 
       def method(self):
+
 
         class Baz():
 
@@ -324,10 +328,12 @@ class FreeVarDetectionTest(parameterized.TestCase):
         baz = Baz()
         x = "x"
 
-        class Bar():
+
+
+        class Bar:
 
           def bar_str(self):
-            return x + "Bar"
+            return f"{x}Bar"
 
           def method(self):
 
@@ -336,8 +342,10 @@ class FreeVarDetectionTest(parameterized.TestCase):
 
             return fn
 
+
         bar = Bar()
         return bar.method()
+
 
     foo = Foo()
     fn = foo.method()

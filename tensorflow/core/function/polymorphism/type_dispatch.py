@@ -90,10 +90,10 @@ class TypeDispatchTable:
 
     most_specific_supertype = None
     for other in self._dispatch_table:
-      if request.is_supertype_of(other):
-        if most_specific_supertype is None or other.is_supertype_of(
-            most_specific_supertype):
-          most_specific_supertype = other
+      if request.is_supertype_of(other) and (
+          most_specific_supertype is None
+          or other.is_supertype_of(most_specific_supertype)):
+        most_specific_supertype = other
 
     self._cache_dispatch(request, most_specific_supertype)
     return most_specific_supertype

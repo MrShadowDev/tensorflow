@@ -46,13 +46,11 @@ def expand_test_config(op_list, test_configs):
   """
   test_configurations = []
   for op_info in op_list:
-    test_index = 0
-    for added_test_config in test_configs:
+    for test_index, added_test_config in enumerate(test_configs):
       test_config = op_info.copy()
       test_config.update(added_test_config)
       test_config['testcase_name'] = op_info['testcase_name'] + '_' + str(
           test_index)
-      test_index += 1
       test_configurations.append(test_config)
   return test_configurations
 

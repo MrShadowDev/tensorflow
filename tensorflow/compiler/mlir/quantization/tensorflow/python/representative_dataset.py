@@ -126,13 +126,12 @@ def get_num_samples(repr_ds: RepresentativeDataset) -> Optional[int]:
     is malformed; it simply means the size cannot be determined without
     iterating the whole dataset.
   """
-  if isinstance(repr_ds, collections.abc.Sized):
-    try:
-      return len(repr_ds)
-    except Exception as ex:  # pylint: disable=broad-except
-      # There are some cases where calling __len__() raises an exception.
-      # Handle this as if the size is unknown.
-      logging.info('Cannot determine the size of the dataset (%s).', ex)
-      return None
-  else:
+  if not isinstance(repr_ds, collections.abc.Sized):
+    return None
+  try:
+    return len(repr_ds)
+  except Exception as ex:  # pylint: disable=broad-except
+    # There are some cases where calling __len__() raises an exception.
+    # Handle this as if the size is unknown.
+    logging.info('Cannot determine the size of the dataset (%s).', ex)
     return None

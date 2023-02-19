@@ -14,6 +14,7 @@
 # ==============================================================================
 """An independent module to detect free vars inside a function."""
 
+
 import builtins
 import collections
 import functools
@@ -30,7 +31,7 @@ from tensorflow.python.autograph.pyct.static_analysis import activity
 
 FreeVar = collections.namedtuple("FreeVar", ["name", "is_function", "obj"])
 
-_fn_log_cache = dict()
+_fn_log_cache = {}
 
 
 def _parse_and_analyze(func):
@@ -57,8 +58,7 @@ def _handle_wrap_partial_func(obj):
     while hasattr(obj, "__wrapped__"):
       obj = obj.__wrapped__
       modified = True
-    if isinstance(obj, functools.partial) or isinstance(
-        obj, functools.partialmethod):
+    if isinstance(obj, (functools.partial, functools.partialmethod)):
       obj = obj.func
       modified = True
   return obj
@@ -114,11 +114,9 @@ def _get_self_obj_from_closure(fn):
         except ValueError:
           # Continue when cell is empty and its content is unavailable
           continue
-        if inspect.isclass(type(closure)):
-          if type(closure).__name__ == cls_name:
-            obj = closure
-            return obj
-
+        if (inspect.isclass(type(closure))
+            and type(closure).__name__ == cls_name):
+          return closure
   return None
 
 
@@ -128,14 +126,9 @@ def _search_callable_free_vars(fn):
 
   try:
     node = _parse_and_analyze(fn)
-  except ValueError:
+  except (ValueError, NotImplementedError):
     # When source code unavailable, return empty result
     return []
-  except NotImplementedError:
-    # Autograph cannot handle multiple lambda functions with same line number
-    # and args name.
-    return []
-
   scope = anno.getanno(node, anno.Static.SCOPE)
   free_vars_all = list(scope.free_vars)
   namespace = inspect_utils.getnamespace(fn)
@@ -150,7 +143,6 @@ def _search_callable_free_vars(fn):
       obj = namespace.get(base, None)
     else:
       assert var.is_composite()
-      # A compositve qualified name `QN` can be either an attr or a subscript
       if var.has_subscript():
         # For free var with subscripts, both the base and full formats are
         # generated.
@@ -158,30 +150,21 @@ def _search_callable_free_vars(fn):
         # contain `glob` as well as `glob[idx]`.
         # The method only keeps the base format for simplicity.
         continue
-      else:
-        assert var.has_attr()
-        # For free vars with multiple attributes like `f.g.h`,
-        # just as the subscripts, multiple free vars (QN) are generated:
-        # ['f', 'f.g', 'f.g.h']
-        # If `f` is `self`, only process the first attribute `f.g`.
-        # Otherwise, only process `f`.
-        if not var.qn[0].is_composite() and base == "self":
-          attr = str(var.qn[1])
-          # For method, access the object that `self` refers to via __self__
-          if hasattr(fn, "__self__"):
-            obj = getattr(fn.__self__, attr, None)
-          # For function (not method) `self` usage under enclosing class scope
-          elif hasattr(fn, "__closure__"):
-            self_obj = _get_self_obj_from_closure(fn)
-            if self_obj:
-              obj = getattr(self_obj, attr, None)
-            else:
-              continue
-          else:
-            continue
-        else:
-          continue
+      assert var.has_attr()
+      if var.qn[0].is_composite() or base != "self":
+        continue
 
+      attr = str(var.qn[1])
+          # For method, access the object that `self` refers to via __self__
+      if (not hasattr(fn, "__self__") and hasattr(fn, "__closure__")
+          and (self_obj := _get_self_obj_from_closure(fn))):
+        obj = getattr(self_obj, attr, None)
+      elif (not hasattr(fn, "__self__") and hasattr(fn, "__closure__")
+            and not (self_obj := _get_self_obj_from_closure(fn))
+            or not hasattr(fn, "__self__") and not hasattr(fn, "__closure__")):
+        continue
+      else:
+        obj = getattr(fn.__self__, attr, None)
     if (inspect.ismodule(obj) or inspect.isclass(obj)):
       continue
     elif inspect.isfunction(obj) or inspect.ismethod(obj):
@@ -192,22 +175,18 @@ def _search_callable_free_vars(fn):
     else:
       filtered.append(FreeVar(str(var), False, None))
 
-  filtered = sorted(filtered, key=lambda x: x.name)
-  return filtered
+  return sorted(filtered, key=lambda x: x.name)
 
 
 def _make_lambda_name(obj):
   source = inspect.getsource(obj)
-  name = source.split("=")[0].strip()
-  return name
+  return source.split("=")[0].strip()
 
 
 def _make_callable_signature(obj):
   """Generate signature for function/method."""
   if inspect.isclass(obj) or inspect.isfunction(obj):
-    if obj.__name__ == "<lambda>":
-      return _make_lambda_name(obj)
-    return obj.__name__
+    return _make_lambda_name(obj) if obj.__name__ == "<lambda>" else obj.__name__
   elif inspect.ismethod(obj):
     obj_self = obj.__self__
     if isinstance(obj_self, type):
@@ -222,12 +201,12 @@ def _make_callable_signature(obj):
 
 def _detect_function_free_vars(fn):
   """Detect free vars in any Python function."""
-  assert isinstance(fn, types.FunctionType) or isinstance(
-      fn, types.MethodType
+  assert isinstance(
+      fn, (types.FunctionType, types.MethodType)
   ), f"The input should be of Python function type. Got type: {type(fn)}."
 
   queue = collections.deque([fn])
-  fn_map = dict()
+  fn_map = {}
 
   # Perform BFS over functions to get free vars
   while queue:
@@ -252,9 +231,15 @@ def _detect_function_free_vars(fn):
 def generate_free_var_logging(fn, fn_threshold=5, var_threshold=10):
   """Generate loggings of free vars from fn."""
   # Now only detect free vars for function/method
-  if not (isinstance(fn, types.FunctionType) or isinstance(
-      fn, types.MethodType) or isinstance(fn, functools.partial) or
-          isinstance(fn, functools.partialmethod)):
+  if not (isinstance(
+      fn,
+      (
+          types.FunctionType,
+          types.MethodType,
+          functools.partial,
+          functools.partialmethod,
+      ),
+  )):
     return None
   fn = _handle_wrap_partial_func(fn)
 
@@ -306,11 +291,7 @@ def generate_free_var_logging(fn, fn_threshold=5, var_threshold=10):
     outside_fn_lines.append(
         one_line_logging(fn_name, fn_vars_map[fn_name], var_threshold))
 
-  if len(fn_vars_map) > fn_threshold:
-    ellipsis_line = "..."
-  else:
-    ellipsis_line = None
-
+  ellipsis_line = "..." if len(fn_vars_map) > fn_threshold else None
   # TODO(panzf): direct users to the manual API after it's exposed to public
   explanation_line = (
       f"Free variables are detected within tf.function {tf_fn_name}() in"

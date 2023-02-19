@@ -125,8 +125,9 @@ def parameter_combinations(test_parameters):
   real_parameters = []
   for parameters in test_parameters:
     keys = parameters.keys()
-    for curr in itertools.product(*parameters.values()):
-      real_parameters.append(dict(zip(keys, curr)))
+    real_parameters.extend(
+        dict(zip(keys, curr))
+        for curr in itertools.product(*parameters.values()))
   return real_parameters
 
 
@@ -818,7 +819,7 @@ class StaticRangeQuantizationTest(quantize_model_test_base.QuantizedModelTest):
   ):
     comma_pos = equation.find(',')
     arrow_pos = equation.find('->')
-    x_labels = equation[0:comma_pos]
+    x_labels = equation[:comma_pos]
     y_labels = equation[comma_pos + 1 : arrow_pos]
 
     label_to_size = {'a': 2, 'b': 3, 'c': 4, 'd': 5, 'e': 6}
@@ -3269,16 +3270,12 @@ class StaticRangeQuantizationTest(quantize_model_test_base.QuantizedModelTest):
     model = ConvModel()
     saved_model_save.save(model, self._input_saved_model_path)
 
-    repr_ds = []
-    for _ in range(500):
-      repr_ds.append({
-          'input_tensor': ops.convert_to_tensor(
-              np.random.uniform(
-                  low=-0.1, high=0.2, size=(1, 3, 4, 3, 3)
-              ).astype('f4')
-          ),
-      })
-
+    repr_ds = [{
+        'input_tensor':
+        ops.convert_to_tensor(
+            np.random.uniform(low=-0.1, high=0.2, size=(1, 3, 4, 3,
+                                                        3)).astype('f4')),
+    } for _ in range(500)]
     signature_key = signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
     tags = {tag_constants.SERVING}
 

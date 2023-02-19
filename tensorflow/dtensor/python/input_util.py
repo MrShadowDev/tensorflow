@@ -233,8 +233,8 @@ def _validate_input(flattened_layouts: Sequence[layout_lib.Layout],
   for layout, elem_spec in zip(flattened_layouts, flattened_elem_spec):
     if elem_spec.shape.rank is None:
       raise ValueError(
-          'Dataset element shape must have a valid rank, got spec %s.' %
-          elem_spec)
+          f'Dataset element shape must have a valid rank, got spec {elem_spec}.'
+      )
 
     # Check that layout's rank matches the element's rank. If dataset is not yet
     # batched, then the layout's rank must be one greater than the element's
@@ -404,10 +404,9 @@ class DTensorDataset(dataset_ops.UnaryUnchangedStructureDataset):
     self._layouts = layouts
     self._batch_dim = batch_dim
     self._prefetch = prefetch
-    self._tf_data_service_config = tf_data_service_config
-
     self._element_spec = dataset.element_spec
 
+    self._tf_data_service_config = tf_data_service_config
     nest.assert_same_structure(self._element_spec, self._layouts)
     flattened_layouts = nest.flatten(self._layouts)
     flattened_elem_spec = nest.flatten(self._element_spec)
@@ -421,8 +420,8 @@ class DTensorDataset(dataset_ops.UnaryUnchangedStructureDataset):
       for layout in flattened_layouts:
         if batch_dim != layout.sharding_specs[0]:
           raise ValueError(
-              ('batch_dim %s was specified but at least one layout did not '
-               'contain it: %s') % (batch_dim, layout))
+              f'batch_dim {batch_dim} was specified but at least one layout did not contain it: {layout}'
+          )
     else:
       # Only one replica since there is no sharding on the batch dimension.
       num_global_replicas = 1
@@ -480,24 +479,23 @@ class DTensorDataset(dataset_ops.UnaryUnchangedStructureDataset):
     # Start with the batched the dataset.
     local_dataset = self._batched_dataset
 
-    if self._batch_dim is not None:
-      if self._num_clients_per_replica > 1:
-        # If a replica is split over multiple clients then each batch needs to
-        # be repeated before distribution as many times as there are clients
-        # corresponding to that replica.
-        local_dataset = self._repeat_batch(local_dataset,
-                                           self._num_clients_per_replica)
-        sharding_policy = data_service_ops.ShardingPolicy.DATA
-      else:
-        # Replicas are unique to each client, so FILE based sharding can be used
-        # which is more performant since each worker does not need to read the
-        # entire dataset.
-        sharding_policy = data_service_ops.ShardingPolicy.FILE
-    else:
+    if self._batch_dim is None:
       # No batch dimension sharding specified so disable dataset sharding during
       # the distribute step.
       sharding_policy = data_service_ops.ShardingPolicy.OFF
 
+    elif self._num_clients_per_replica > 1:
+      # If a replica is split over multiple clients then each batch needs to
+      # be repeated before distribution as many times as there are clients
+      # corresponding to that replica.
+      local_dataset = self._repeat_batch(local_dataset,
+                                         self._num_clients_per_replica)
+      sharding_policy = data_service_ops.ShardingPolicy.DATA
+    else:
+      # Replicas are unique to each client, so FILE based sharding can be used
+      # which is more performant since each worker does not need to read the
+      # entire dataset.
+      sharding_policy = data_service_ops.ShardingPolicy.FILE
     # Apply distribution here (if specified) so all remaining transformations
     # are executed locally.
     if self._tf_data_service_config is not None:

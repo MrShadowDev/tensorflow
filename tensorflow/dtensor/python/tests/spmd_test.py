@@ -108,10 +108,7 @@ def select_tol(op, mesh, default_tol, low_res_tol):
   ]):
     return default_tol
 
-  if 'TPU' in mesh.local_devices()[0]:
-    return low_res_tol
-  else:
-    return default_tol
+  return low_res_tol if 'TPU' in mesh.local_devices()[0] else default_tol
 
 
 def order_broadcastable_operands(op, lhs, rhs):
@@ -133,15 +130,16 @@ class DTensorSPMDTest(test_util.DTensorBaseTest):
 
     global_ids = test_util.create_device_ids_array((2, 4))
     local_ids = np.ravel(global_ids).tolist()
-    mesh_dict = dict()
-    for device in ('CPU', 'GPU', 'TPU'):
-      mesh_dict[device] = Mesh(
-          [_MESH_DIM_X, _MESH_DIM_Y],
-          global_ids,
-          local_ids,
-          test_util.create_device_list((2, 4), device),
-          use_xla_spmd=test_util.get_use_xla_spmd(device),
-      )
+    mesh_dict = {
+        device: Mesh(
+            [_MESH_DIM_X, _MESH_DIM_Y],
+            global_ids,
+            local_ids,
+            test_util.create_device_list((2, 4), device),
+            use_xla_spmd=test_util.get_use_xla_spmd(device),
+        )
+        for device in ('CPU', 'GPU', 'TPU')
+    }
     self.mesh = self.configTestMesh(mesh_dict)
 
     # Creates a bunch of common layouts used by tests later.
@@ -549,15 +547,13 @@ class DTensorSPMDTest(test_util.DTensorBaseTest):
           layout_lib.UNSHARDED, layout_lib.UNSHARDED, 'y', c_dim_sharding
       ]
       a = np.ones(shape=(1, 1, 4, 4), dtype=np.float32)
-      layout = Layout(input_sharding, self.mesh)
     else:
       c_dim = 1
       input_sharding = [
           layout_lib.UNSHARDED, c_dim_sharding, 'y', layout_lib.UNSHARDED
       ]
       a = np.ones(shape=(1, 4, 4, 1), dtype=np.float32)
-      layout = Layout(input_sharding, self.mesh)
-
+    layout = Layout(input_sharding, self.mesh)
     bias = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
     expected_result = nn_ops.bias_add(a, bias, data_format=data_format)
     expected_result_sharding = input_sharding
@@ -808,14 +804,14 @@ class DTensorSPMDTest(test_util.DTensorBaseTest):
     layout_b = self.replicated_layout_2d
     layout_output = self.replicated_layout_2d
 
-    if shard_type == 'sharded':
-      layout_a = self.first_dimension_sharded_layout
-      layout_b = self.first_dimension_sharded_layout
-      layout_output = self.first_dimension_sharded_layout
-    elif shard_type == 'mixed':
+    if shard_type == 'mixed':
       layout_b = self.first_dimension_sharded_layout
       layout_output = self.first_dimension_sharded_layout
 
+    elif shard_type == 'sharded':
+      layout_a = self.first_dimension_sharded_layout
+      layout_b = self.first_dimension_sharded_layout
+      layout_output = self.first_dimension_sharded_layout
     a = constant_op.constant([[1., 2.], [3., 4.]])
     b = constant_op.constant([[1., 2.], [3., 4.]])
     expected_result = op([a, b])
@@ -1581,10 +1577,12 @@ class DTensorSPMDTest(test_util.DTensorBaseTest):
       final_layout[-2] = layout_lib.UNSHARDED
       final_layout[-1] = layout_lib.UNSHARDED
     for i in range(len(final_layout) - 2):
-      if (final_layout[i] == a_sharding_spec[-2] or
-          final_layout[i] == a_sharding_spec[-1] or
-          final_layout[i] == b_sharding_spec[-2] or
-          final_layout[i] == b_sharding_spec[-1]):
+      if final_layout[i] in [
+          a_sharding_spec[-2],
+          a_sharding_spec[-1],
+          b_sharding_spec[-2],
+          b_sharding_spec[-1],
+      ]:
         final_layout[i] = layout_lib.UNSHARDED
 
     return Layout(final_layout, layout_a.mesh)

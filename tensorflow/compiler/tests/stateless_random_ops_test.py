@@ -103,9 +103,7 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
     alg = gen_stateless_random_ops_v2.stateless_random_get_alg()
     self.assertAllEqual(alg.shape, [])
 
-  @parameterized.named_parameters(
-      ('_%s_%s' % (op_id, alg_id), op, alg_group)  # pylint: disable=g-complex-comprehension
-      for alg_id, alg_group in enumerate([
+  @parameterized.named_parameters((f'_{op_id}_{alg_id}', op, alg_group) for alg_id, alg_group in enumerate([
           [
               stateless.Algorithm.PHILOX, stateless.Algorithm.PHILOX.value,
               'philox'
@@ -118,8 +116,7 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
               stateless.Algorithm.AUTO_SELECT,
               stateless.Algorithm.AUTO_SELECT.value, 'auto_select', None
           ],
-      ])
-      for op_id, op in enumerate([
+      ]) for op_id, op in enumerate([
           stateless.stateless_random_normal,
           stateless.stateless_truncated_normal,
           functools.partial(
@@ -182,7 +179,7 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
   def testDeterminism(self, stateless_op, shape, dtype):
     # Stateless values should be equal iff the seeds are equal (roughly)
     seeds = [(x, y) for x in range(-2, 3) for y in range(-2, 3)] * 3  # pylint: disable=g-complex-comprehension
-    with self.session(), self.test_scope():
+    with (self.session(), self.test_scope()):
       seed_t = array_ops.placeholder(dtypes.int32, shape=[2])
       pure = stateless_op(shape, seed=seed_t, dtype=dtype)
       values = [(seed, pure.eval(feed_dict={seed_t: seed})) for seed in seeds]
@@ -190,12 +187,8 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
         for s1, v1 in values:
           if s0 == s1:
             self.assertAllEqual(v0, v1)
-          else:
-            # The resolutions of float16 and bfloat16 are too low, so
-            # in some cases (e.g. scalar shape) different seeds may
-            # lead to the same output. So we skip those dtypes.
-            if not (dtype in (dtypes.bfloat16, dtypes.float16) and shape == ()):  # pylint: disable=g-explicit-bool-comparison
-              self.assertNotAllEqual(v0, v1)
+          elif dtype not in (dtypes.bfloat16, dtypes.float16) or shape != ():  # pylint: disable=g-explicit-bool-comparison
+            self.assertNotAllEqual(v0, v1)
 
   def testRandomUniformIsInRange(self):
     with self.session() as sess, self.test_scope():
@@ -246,12 +239,10 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
          (dtype, seed) in bad_combos2)):
       self.skipTest(
           'This (device, alg, dtype, seed) combination fails (b/244649364).')
-    with self.session() as sess, self.test_scope():
+    with (self.session() as sess, self.test_scope()):
       seed_t = array_ops.placeholder(dtypes.int32, shape=[2])
       n = 1000
-      maxval = 1
-      if dtype.is_integer:
-        maxval = 100
+      maxval = 100 if dtype.is_integer else 1
       x = stateless.stateless_random_uniform(
           shape=[n], seed=seed_t, maxval=maxval, dtype=dtype, alg=alg)
       y = sess.run(x, {seed_t: seed})
@@ -292,7 +283,7 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (f'_{dtype.name}', dtype) for dtype in _allowed_types())
   def testTruncatedNormal(self, dtype):
-    with self.session() as sess, self.test_scope():
+    with (self.session() as sess, self.test_scope()):
       seed_t = array_ops.placeholder(dtypes.int32, shape=[2])
       n = 10000000
       x = stateless.stateless_truncated_normal(
@@ -300,18 +291,11 @@ class StatelessRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
       y = sess.run(x, {seed_t: [0x12345678, 0xabcdef1]})
       is_megacore = 'megacore' in os.environ.get('TEST_TARGET', '').lower()
       if dtype == dtypes.float16:
-        if is_megacore:
-          mean_atol = 2e-3
-        else:
-          mean_atol = 7e-4
+        mean_atol = 2e-3 if is_megacore else 7e-4
       else:
         mean_atol = 5e-4
 
-      if dtype == dtypes.float16 and is_megacore:
-        median_atol = 2e-3
-      else:
-        median_atol = 8e-4
-
+      median_atol = 2e-3 if dtype == dtypes.float16 and is_megacore else 8e-4
       if dtype == dtypes.bfloat16:
         variance_rtol = 6e-3
       elif dtype == dtypes.float16:
@@ -412,7 +396,7 @@ class StatelessRandomOpsBenchmark(test.Benchmark):
                                     name='input')
       random_t = stateless.stateless_random_uniform(
           shape, seed=seed_var, dtype=dtype)
-      return '%s.shape%s' % (name, shape), [random_t]
+      return f'{name}.shape{shape}', [random_t]
 
     xla_test.Benchmark(self, builder_fn, use_xla_jit=use_xla_jit, device='cpu')
 

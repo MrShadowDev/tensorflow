@@ -160,13 +160,12 @@ def from_value(value: Any,
     return default_types.List(*(from_value(c, context) for c in value))
 
   if isinstance(value, tuple):
-    if util.is_namedtuple(value):
-      named_tuple_type = type(value)
-      return default_types.NamedTuple.from_type_and_attributes(
-          named_tuple_type, tuple(from_value(c, context) for c in value))
-    else:
+    if not util.is_namedtuple(value):
       return default_types.Tuple(*(from_value(c, context) for c in value))
 
+    named_tuple_type = type(value)
+    return default_types.NamedTuple.from_type_and_attributes(
+        named_tuple_type, tuple(from_value(c, context) for c in value))
   if isinstance(value, collections.abc.Mapping):
     mapping_type = type(value)
     return default_types.Dict(

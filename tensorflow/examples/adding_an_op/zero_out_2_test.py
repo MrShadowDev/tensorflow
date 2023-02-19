@@ -35,13 +35,13 @@ class ZeroOut2Test(tf.test.TestCase):
   def test_grad(self):
     x = tf.constant([5, 4, 3, 2, 1], dtype=tf.float32)
     theoretical, numerical = tf.test.compute_gradient(zero_out_op_2.zero_out,
-                                                      tuple([x]))
+                                                      (x, ))
     self.assertAllClose(theoretical, numerical)
 
   def test_grad_2d(self):
     x = tf.constant([[6, 5, 4], [3, 2, 1]], dtype=tf.float32)
     theoretical, numerical = tf.test.compute_gradient(zero_out_op_2.zero_out,
-                                                      tuple([x]))
+                                                      (x, ))
     self.assertAllClose(theoretical, numerical)
 
 

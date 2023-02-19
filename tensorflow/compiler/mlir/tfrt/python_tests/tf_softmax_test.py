@@ -26,8 +26,7 @@ def softmax(x):
   z = x - np.max(x, axis=-1, keepdims=True)
   numerator = np.exp(z)
   denominator = np.sum(numerator, axis=-1, keepdims=True)
-  result = numerator / denominator
-  return result
+  return numerator / denominator
 
 
 class TfSoftmaxTest(test.TestCase):

@@ -62,17 +62,6 @@ def load_labels(label_file):
 
 
 if __name__ == "__main__":
-  file_name = "tensorflow/examples/label_image/data/grace_hopper.jpg"
-  model_file = \
-    "tensorflow/examples/label_image/data/inception_v3_2016_08_28_frozen.pb"
-  label_file = "tensorflow/examples/label_image/data/imagenet_slim_labels.txt"
-  input_height = 299
-  input_width = 299
-  input_mean = 0
-  input_std = 255
-  input_layer = "input"
-  output_layer = "InceptionV3/Predictions/Reshape_1"
-
   parser = argparse.ArgumentParser()
   parser.add_argument("--image", help="image to be processed")
   parser.add_argument("--graph", help="graph/model to be executed")
@@ -85,25 +74,20 @@ if __name__ == "__main__":
   parser.add_argument("--output_layer", help="name of output layer")
   args = parser.parse_args()
 
-  if args.graph:
-    model_file = args.graph
-  if args.image:
-    file_name = args.image
-  if args.labels:
-    label_file = args.labels
-  if args.input_height:
-    input_height = args.input_height
-  if args.input_width:
-    input_width = args.input_width
-  if args.input_mean:
-    input_mean = args.input_mean
-  if args.input_std:
-    input_std = args.input_std
-  if args.input_layer:
-    input_layer = args.input_layer
-  if args.output_layer:
-    output_layer = args.output_layer
-
+  model_file = (
+      args.graph or
+      "tensorflow/examples/label_image/data/inception_v3_2016_08_28_frozen.pb")
+  file_name = (args.image
+               or "tensorflow/examples/label_image/data/grace_hopper.jpg")
+  label_file = (
+      args.labels
+      or "tensorflow/examples/label_image/data/imagenet_slim_labels.txt")
+  input_height = args.input_height or 299
+  input_width = args.input_width or 299
+  input_mean = args.input_mean or 0
+  input_std = args.input_std or 255
+  input_layer = args.input_layer or "input"
+  output_layer = args.output_layer or "InceptionV3/Predictions/Reshape_1"
   graph = load_graph(model_file)
   t = read_tensor_from_image_file(
       file_name,
@@ -112,8 +96,8 @@ if __name__ == "__main__":
       input_mean=input_mean,
       input_std=input_std)
 
-  input_name = "import/" + input_layer
-  output_name = "import/" + output_layer
+  input_name = f"import/{input_layer}"
+  output_name = f"import/{output_layer}"
   input_operation = graph.get_operation_by_name(input_name)
   output_operation = graph.get_operation_by_name(output_name)
 
