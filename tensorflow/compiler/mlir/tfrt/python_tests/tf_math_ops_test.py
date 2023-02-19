@@ -50,10 +50,7 @@ def mlir_func_1d(op_name):
 
 def test_1d(op_name, fn, vectorize=False, lb=-1.0, ub=1.0, rtol_enum=Rtol.BASE):
   compiled = jitrt.compile(mlir_func_1d(op_name), 'test', vectorize=vectorize)
-  rtols = {}
-  rtols[Rtol.ZERO] = 0.0
-  # Not all approximations are identical to TF's.
-  rtols[Rtol.BASE] = 1e-6
+  rtols = {Rtol.ZERO: 0.0, Rtol.BASE: 1e-06}
   # For some ops we can match TF with the right build flags.
   # Note that vector size also matters: for vectors whose size is not a multiple
   # of the machine's vector length, Eigen (and therefore TF) computes some

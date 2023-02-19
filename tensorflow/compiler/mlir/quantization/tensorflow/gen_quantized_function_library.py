@@ -43,9 +43,9 @@ def _substitute_for_loop_template(module: str) -> str:
       break
 
     try:
-      arg_name = func_match.group(1)
-      arg_values = ast.literal_eval(func_match.group(2))
-      loop_template = string.Template(func_match.group(3))
+      arg_name = func_match[1]
+      arg_values = ast.literal_eval(func_match[2])
+      loop_template = string.Template(func_match[3])
     except Exception as e:  # pylint: disable=broad-except
       raise ValueError('The loop template is in wrong format') from e
 
@@ -71,11 +71,11 @@ def _substitute_parameterization_template(module: str) -> str:
       break
 
     try:
-      value_list = ast.literal_eval(func_match.group(1))
+      value_list = ast.literal_eval(func_match[1])
       # Escapes template $-based substitutions for attributes containing $.
       # $$ is replaced with a single $.
-      func_template = string.Template(
-          func_match.group(2).replace('tfdtype$DT_', 'tfdtype$$DT_'))
+      func_template = string.Template(func_match[2].replace(
+          'tfdtype$DT_', 'tfdtype$$DT_'))
     except Exception as e:  # pylint: disable=broad-except
       raise ValueError('The function template is in wrong format') from e
 
@@ -94,8 +94,8 @@ def _substitute_parameterization_template(module: str) -> str:
 def _format_snake_case_op_name(s):
   """Formats the op name to snake case."""
   s = s.replace('2D', '2d').replace('3D', '3d')
-  snake_case = ''.join(['_' + i.lower() if i.isupper() else i for i in s
-                       ]).lstrip('_')
+  snake_case = ''.join(
+      [f'_{i.lower()}' if i.isupper() else i for i in s]).lstrip('_')
   return snake_case.replace('mat_mul', 'matmul').replace('bias_add', 'bias')
 
 
@@ -107,8 +107,8 @@ def _substitute_impl_function_name_template(module: str) -> str:
     if func_match is None:
       break
 
-    text = func_match.group(1)
-    function_name = 'internal_{}_fn'.format(_format_snake_case_op_name(text))
+    text = func_match[1]
+    function_name = f'internal_{_format_snake_case_op_name(text)}_fn'
     module = re.sub(compiled_regex, function_name, module, count=1)
   return module
 
@@ -123,9 +123,9 @@ def _substitute_quantized_function_name_template(module: str) -> str:
       break
 
     # Make sure the string ends with ",)" so the parsed value is a tuple.
-    argument_string = func_match.group(1)
+    argument_string = func_match[1]
     if not argument_string.endswith(',)'):
-      argument_string = argument_string[:-1] + ',)'
+      argument_string = f'{argument_string[:-1]},)'
     arguments = ast.literal_eval(argument_string)
 
     if len(arguments) < 1 or len(arguments) > 2:
@@ -137,15 +137,12 @@ def _substitute_quantized_function_name_template(module: str) -> str:
       raise ValueError('The quantized_ops list must not be empty')
 
     # Add op names to the function name.
-    function_name = 'quantized_{}'.format(
-        _format_snake_case_op_name(quantized_ops[0]))
+    function_name = f'quantized_{_format_snake_case_op_name(quantized_ops[0])}'
     if len(quantized_ops) > 1:
-      function_name += '_with_{}'.format(
-          _format_snake_case_op_name(quantized_ops[1]))
+      function_name += f'_with_{_format_snake_case_op_name(quantized_ops[1])}'
     if len(quantized_ops) > 1:
       for quantized_op in quantized_ops[2:]:
-        function_name += '_and_{}'.format(
-            _format_snake_case_op_name(quantized_op))
+        function_name += f'_and_{_format_snake_case_op_name(quantized_op)}'
 
     # Add suffix based on output type.
     suffix = '_fn'
@@ -179,7 +176,7 @@ def main(_: Sequence[str]) -> None:
       # Substitute all the function templates.
       out = re.split(file_prefix, src_file)
       if len(out) != 2:
-        raise ValueError('The file name must start with {}'.format(file_prefix))
+        raise ValueError(f'The file name must start with {file_prefix}')
       tag = out[1][:-5]  # the last five values = ".mlir"
       module = _substitute_for_loop_template(module)
       module = _substitute_parameterization_template(module)

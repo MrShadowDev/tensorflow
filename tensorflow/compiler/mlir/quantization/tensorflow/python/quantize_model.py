@@ -163,15 +163,14 @@ def _validate_representative_dataset(
           f'do not match. Signature keys: {set(signature_keys)}, '
           f'representative dataset map: {set(representative_dataset.keys())}.'
       )
-  else:
-    if len(signature_keys) > 1:
-      raise ValueError(
-          'Representative dataset is not a mapping '
-          f'(got: {type(representative_dataset)}), '
-          'but there is more than one signature key provided. '
-          'Please provide a map of {signature_key -> dataset} '
-          'with more than one signature key.'
-      )
+  elif len(signature_keys) > 1:
+    raise ValueError(
+        'Representative dataset is not a mapping '
+        f'(got: {type(representative_dataset)}), '
+        'but there is more than one signature key provided. '
+        'Please provide a map of {signature_key -> dataset} '
+        'with more than one signature key.'
+    )
 
 
 def _convert_values_to_tf_tensors(
@@ -543,11 +542,7 @@ def _run_static_range_qat(
       quant_opts.SerializeToString(),
   )
 
-  exported_model = exported_model_pb2.ExportedModel.FromString(
-      exported_model_serialized
-  )
-
-  return exported_model
+  return exported_model_pb2.ExportedModel.FromString(exported_model_serialized)
 
 
 def _add_calibration_statistics(graph_def: graph_pb2.GraphDef) -> None:
@@ -942,14 +937,10 @@ def _populate_quantization_options_default_values(
         'Quantized opset only.'
     )
 
-  if (
-      quantization_options.quantization_method.experimental_method
-      == _ExperimentalMethod.WEIGHT_ONLY
-      and (
-          quantization_options.op_set == quant_opts_pb2.OpSet.UNIFORM_QUANTIZED
-          or quantization_options.op_set == quant_opts_pb2.OpSet.TF
-      )
-  ):
+  if (quantization_options.quantization_method.experimental_method ==
+      _ExperimentalMethod.WEIGHT_ONLY and quantization_options.op_set in [
+          quant_opts_pb2.OpSet.UNIFORM_QUANTIZED, quant_opts_pb2.OpSet.TF
+      ]):
     raise ValueError('TF/Uniform quantized opset does not support weight-only.')
 
   # Converter assumes options are specified. So set SRQ explicitly.
@@ -1042,10 +1033,10 @@ def quantize(
           quantization_options,
           representative_dataset,
       )
-    elif (
-        method.experimental_method == _ExperimentalMethod.DYNAMIC_RANGE
-        or method.experimental_method == _ExperimentalMethod.WEIGHT_ONLY
-    ):
+    elif method.experimental_method in [
+          _ExperimentalMethod.DYNAMIC_RANGE,
+          _ExperimentalMethod.WEIGHT_ONLY,
+      ]:
       return _dynamic_range_quantize(
           saved_model_path,
           signature_keys,

@@ -90,11 +90,10 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
       A tensor handle to the lookup table.
     """
     assert self._default_value.get_shape().ndims == 0
-    table_ref = gen_simple_hash_table_op.examples_simple_hash_table_create(
+    return gen_simple_hash_table_op.examples_simple_hash_table_create(
         key_dtype=self._key_dtype,
         value_dtype=self._value_dtype,
         name=self._name)
-    return table_ref
 
   def _serialize_to_tensors(self):
     """Implements checkpointing protocols for `Trackable`."""
@@ -135,7 +134,7 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
     Raises:
       TypeError: when `key` do not match the table data types.
     """
-    with tf.name_scope(name or "%s_lookup_table_find" % self._name):
+    with tf.name_scope(name or f"{self._name}_lookup_table_find"):
       key = tf.convert_to_tensor(key, dtype=self._key_dtype, name="key")
       if dynamic_default_value is not None:
         dynamic_default_value = tf.convert_to_tensor(
@@ -162,13 +161,11 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
       TypeError: when `key` or `value` doesn't match the table data
         types.
     """
-    with tf.name_scope(name or "%s_lookup_table_insert" % self._name):
+    with tf.name_scope(name or f"{self._name}_lookup_table_insert"):
       key = tf.convert_to_tensor(key, self._key_dtype, name="key")
       value = tf.convert_to_tensor(value, self._value_dtype, name="value")
-      # pylint: disable=protected-access
-      op = gen_simple_hash_table_op.examples_simple_hash_table_insert(
+      return gen_simple_hash_table_op.examples_simple_hash_table_insert(
           self.resource_handle, key, value)
-      return op
 
   def remove(self, key, name=None):
     """Remove `key`.
@@ -183,19 +180,11 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
     Raises:
       TypeError: when `key` doesn't match the table data type.
     """
-    with tf.name_scope(name or "%s_lookup_table_remove" % self._name):
+    with tf.name_scope(name or f"{self._name}_lookup_table_remove"):
       key = tf.convert_to_tensor(key, self._key_dtype, name="key")
 
-      # For remove, just the key is used by the kernel; no value is used.
-      # But the kernel is specifc to key_dtype and value_dtype
-      # (i.e. it uses a <key_dtype, value_dtype> template).
-      # So value_dtype is passed in explicitly. (While
-      # key_dtype is specificed implicitly by the dtype of key.)
-
-      # pylint: disable=protected-access
-      op = gen_simple_hash_table_op.examples_simple_hash_table_remove(
+      return gen_simple_hash_table_op.examples_simple_hash_table_remove(
           self.resource_handle, key, value_dtype=self._value_dtype)
-      return op
 
   def export(self, name=None):
     """Export all `key` and `value` pairs.
@@ -207,7 +196,7 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
       A tuple of two tensors, the first with the `keys` and the second with
       the `values`.
     """
-    with tf.name_scope(name or "%s_lookup_table_export" % self._name):
+    with tf.name_scope(name or f"{self._name}_lookup_table_export"):
       # pylint: disable=protected-access
       keys, values = gen_simple_hash_table_op.examples_simple_hash_table_export(
           self.resource_handle,
@@ -230,11 +219,9 @@ class SimpleHashTable(tf.saved_model.experimental.TrackableResource):
       A tuple of two tensors, the first with the `keys` and the second with
       the `values`.
     """
-    with tf.name_scope(name or "%s_lookup_table_import" % self._name):
-      # pylint: disable=protected-access
-      op = gen_simple_hash_table_op.examples_simple_hash_table_import(
+    with tf.name_scope(name or f"{self._name}_lookup_table_import"):
+      return gen_simple_hash_table_op.examples_simple_hash_table_import(
           self.resource_handle, keys, values)
-      return op
 
 
 tf.no_gradient("Examples>SimpleHashTableCreate")

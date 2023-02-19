@@ -80,8 +80,7 @@ class MultiplexOpTest(tf.test.TestCase):
     mux_123 = multiplex_4_op.multiplex(cond_123, a_123, b_123)
     b4 = tf.constant([201, 202, 203, 204, 205], dtype=tf.int64)
     cond4 = tf.constant([True, True, True, False, False], dtype=bool)
-    result = multiplex_4_op.multiplex(cond4, mux_123, b4)
-    return result
+    return multiplex_4_op.multiplex(cond4, mux_123, b4)
 
   def test_both_single_and_list(self):
     result = self._both()

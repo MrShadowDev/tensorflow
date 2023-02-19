@@ -76,7 +76,7 @@ def initialize_multi_client_cluster(job_name: str,
   assert context.executing_eagerly()
 
   if not collective_leader.startswith("/job:"):
-    collective_leader = "/job:" + collective_leader
+    collective_leader = f"/job:{collective_leader}"
 
   context.context().configure_collective_ops(
       use_nccl_communication=gpu_use_nccl_communication,
@@ -229,12 +229,11 @@ def initialize_accelerator_system(
         collective_leader=config.full_job_name(task_id=0),
         gpu_use_nccl_communication=config.gpu_use_nccl_communication(),
         enable_coordination_service=enable_coordination_service)
-  else:
-    if device_type == "GPU":
-      # Enables Nccl on local mode.
-      context.context(  # pylint: disable=protected-access
-      )._collective_use_nccl_communication = config.gpu_use_nccl_communication(
-      )
+  elif device_type == "GPU":
+    # Enables Nccl on local mode.
+    context.context(  # pylint: disable=protected-access
+    )._collective_use_nccl_communication = config.gpu_use_nccl_communication(
+    )
 
   if device_type == "TPU" and not config.backend_is_pw():
     tpu_util.initialize_tpu_system()

@@ -70,7 +70,7 @@ def num_local_devices(device_type: str) -> int:
   """Returns the number of devices of device_type configured on this client."""
 
   # Reads from config because CPU and GPU can use logical devices.
-  if device_type.upper() in ["CPU", "GPU"]:
+  if device_type.upper() in {"CPU", "GPU"}:
     context_config = context.get_config()
     return context_config.device_count[device_type.upper()]
 
@@ -100,9 +100,7 @@ def client_id() -> int:
 @tf_export("experimental.dtensor.num_clients", v1=[])
 def num_clients() -> int:
   """Returns the number of clients in this DTensor cluster."""
-  if is_local_mode():
-    return 1
-  return len(jobs())
+  return 1 if is_local_mode() else len(jobs())
 
 
 @tf_export("experimental.dtensor.job_name", v1=[])
@@ -155,12 +153,13 @@ def jobs() -> List[str]:
 
   # Validate ordering for BNS style job names.
   # For definition of BNS, refer to https://research.google/pubs/pub43438/.
-  if any([name.startswith("/bns/") for name in d_jobs_list]):
-    if d_jobs_list != sorted(d_jobs_list, key=_bns_task_id):
-      raise ValueError(
-          f"Unexpected DTENSOR_JOBS content {d_jobs}. Sort entries "
-          "in DTENSOR_JOBS because cluster construction relies on "
-          "the order.")
+  if any(name.startswith("/bns/")
+         for name in d_jobs_list) and d_jobs_list != sorted(
+             d_jobs_list, key=_bns_task_id):
+    raise ValueError(
+        f"Unexpected DTENSOR_JOBS content {d_jobs}. Sort entries "
+        "in DTENSOR_JOBS because cluster construction relies on "
+        "the order.")
 
   return d_jobs_list
 

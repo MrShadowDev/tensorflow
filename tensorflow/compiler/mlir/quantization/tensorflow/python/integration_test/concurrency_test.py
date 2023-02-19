@@ -96,10 +96,7 @@ class MultiThreadedTest(test.TestCase):
     # Ensure that multiple conversion jobs with calibration won't encounter any
     # concurrency issue.
     with self.pool:
-      jobs = []
-      for _ in range(10):
-        jobs.append(self.pool.submit(self._convert_with_calibration))
-
+      jobs = [self.pool.submit(self._convert_with_calibration) for _ in range(10)]
       for job in jobs:
         self.assertIsNotNone(job.result())
 

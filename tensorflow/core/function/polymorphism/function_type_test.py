@@ -482,7 +482,7 @@ class CanonicalizationTest(test.TestCase, parameterized.TestCase):
   )
   def test_posonly(self, args, kwargs):
     major, minor, _ = platform.python_version_tuple()
-    if not (major == "3" and int(minor) >= 8):
+    if major != "3" or int(minor) < 8:
       self.skipTest("Positional only args are supported in Python 3.8+")
 
     # Raises syntax error in 3.7 but is important coverage for 3.8+.

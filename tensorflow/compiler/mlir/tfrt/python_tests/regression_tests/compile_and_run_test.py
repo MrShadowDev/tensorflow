@@ -56,22 +56,14 @@ class CompileAndRunTest(test.TestCase):
       mlir_type = ir.IntegerType(mlir_type)
       if mlir_type.width == 1:
         return bool
-      if mlir_type.width == 8:
-        if mlir_type.is_unsigned:
-          return np.uint8
-        return np.int8
       if mlir_type.width == 16:
-        if mlir_type.is_unsigned:
-          return np.uint16
-        return np.int16
-      if mlir_type.width == 32:
-        if mlir_type.is_unsigned:
-          return np.uint32
-        return np.int32
-      if mlir_type.width == 64:
-        if mlir_type.is_unsigned:
-          return np.uint64
-        return np.int64
+        return np.uint16 if mlir_type.is_unsigned else np.int16
+      elif mlir_type.width == 32:
+        return np.uint32 if mlir_type.is_unsigned else np.int32
+      elif mlir_type.width == 64:
+        return np.uint64 if mlir_type.is_unsigned else np.int64
+      elif mlir_type.width == 8:
+        return np.uint8 if mlir_type.is_unsigned else np.int8
     if ir.F16Type.isinstance(mlir_type):
       return np.float16
     if ir.F32Type.isinstance(mlir_type):

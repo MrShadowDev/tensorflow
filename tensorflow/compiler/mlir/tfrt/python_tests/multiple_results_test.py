@@ -31,8 +31,7 @@ jitrt = tf_jitrt.TfJitRtExecutor()
 class MultipleResultsTest(test.TestCase):
 
   def test_two_results(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>) -> (tensor<?xf32>, tensor<?xf32>) {
           %0 = "tf.Const"() { value = dense<1.0> : tensor<f32> }
                : () -> tensor<f32>
@@ -43,6 +42,7 @@ class MultipleResultsTest(test.TestCase):
           func.return %1, %2 : tensor<?xf32>, tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10)
@@ -53,8 +53,7 @@ class MultipleResultsTest(test.TestCase):
       np.testing.assert_allclose(res1, arg0 + 2.0, atol=0.0)
 
   def test_three_results(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>) ->
             (tensor<?xf32>, tensor<?xf32>, tensor<?xf32>) {
           %0 = "tf.Const"() { value = dense<1.0> : tensor<f32> }
@@ -68,6 +67,7 @@ class MultipleResultsTest(test.TestCase):
           func.return %1, %2, %3 : tensor<?xf32>, tensor<?xf32>, tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10)
@@ -79,8 +79,7 @@ class MultipleResultsTest(test.TestCase):
       np.testing.assert_allclose(res2, arg0 + 3.0, atol=0.0)
 
   def test_same_tensor_returned_twice(self):
-    for specialize in specializations:
-      mlir_function = """
+    mlir_function = """
         func.func @test(%arg0: tensor<?xf32>) -> (tensor<?xf32>, tensor<?xf32>) {
           %0 = "tf.Const"() { value = dense<1.0> : tensor<f32> }
                : () -> tensor<f32>
@@ -89,6 +88,7 @@ class MultipleResultsTest(test.TestCase):
           func.return %1, %1 : tensor<?xf32>, tensor<?xf32>
         }"""
 
+    for specialize in specializations:
       compiled = jitrt.compile(mlir_function, 'test', specialize)
 
       d0 = np.random.randint(1, 10)

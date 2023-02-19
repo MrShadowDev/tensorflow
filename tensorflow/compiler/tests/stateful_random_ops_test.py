@@ -288,9 +288,7 @@ class StatefulRandomOpsTest(xla_test.XLATestCase, parameterized.TestCase):
     with ops.device(xla_device_name()):
       n = 1000
       gen = random.Generator.from_seed(seed=seed, alg=alg)
-      maxval = 1
-      if dtype.is_integer:
-        maxval = 100
+      maxval = 100 if dtype.is_integer else 1
       t = gen.uniform(shape=[n], maxval=maxval, dtype=dtype)
       x = t.numpy().astype(float)
       if maxval > 1:

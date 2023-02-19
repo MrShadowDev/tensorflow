@@ -123,7 +123,7 @@ def restore_captures(concrete_function, inputs):
         # placeholder for this input.
         concrete_function.graph.capture(bound_input)
 
-  if any([inp is None for inp in captured_inputs_list]):
+  if any(inp is None for inp in captured_inputs_list):
     warnings.warn(
         "Trying to load ShardedVariables using tf.saved_model.load. "
         "This won't work if using a tf.distribute.Strategy, and may "

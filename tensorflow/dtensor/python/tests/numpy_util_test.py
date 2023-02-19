@@ -41,7 +41,7 @@ class NumpyUtilTest(test_util.DTensorBaseTest):
     self.mesh = self.configTestMesh(mesh_dict)
 
   def test_tensor_from_replicated(self):
-    tensors = [np.arange(4) for i in range(self.mesh.size)]
+    tensors = [np.arange(4) for _ in range(self.mesh.size)]
     replicated_layout = layout.Layout([layout.UNSHARDED, layout.UNSHARDED],
                                       mesh=self.mesh)
 

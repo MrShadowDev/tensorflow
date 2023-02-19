@@ -374,8 +374,9 @@ def check_layout(tensor: ops.Tensor, layout: layout_lib.Layout) -> None:
     ValueError: If the layout of `tensor` does not match the supplied `layout`.
   """
   if fetch_layout(tensor) != layout:
-    raise ValueError("Layout of tensor: " + str(fetch_layout(tensor)) +
-                     ", did not match expected layout: " + str(layout))
+    raise ValueError(
+        f"Layout of tensor: {str(fetch_layout(tensor))}, did not match expected layout: {str(layout)}"
+    )
 
 
 @tf_export("experimental.dtensor.relayout", v1=[])

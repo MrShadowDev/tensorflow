@@ -160,7 +160,7 @@ class DVariable(resource_variable_ops.ResourceVariable):
     # keyword argument. We need to pop it because we are passing kwargs to
     # super class constructor.
     layout = kwargs.pop('layout', None)
-    shape = kwargs.get('shape', None)
+    shape = kwargs.get('shape')
 
     if callable(initial_value):
       unwrapped = initial_value
@@ -223,7 +223,6 @@ class DVariable(resource_variable_ops.ResourceVariable):
           # InvalidArgument or NotFoundError depending on whether the API
           # is called within DTensor device scope or not.
           self.layout = None
-          pass
       mesh = self.layout.mesh if self.layout else None
       with api.run_on(mesh) if mesh else contextlib.nullcontext():
         super(DVariable, self).__init__(

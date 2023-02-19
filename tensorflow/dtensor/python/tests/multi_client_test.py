@@ -283,10 +283,7 @@ def run_client(idx, server_ports, additional_ports, num_devices):
       _NUM_CLIENTS.value, idx, additional_ports
   )
 
-  artifact_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', '')
-
-  # Redirect extra client's stderr/stdout to undeclared outputs on sponge.
-  if artifact_dir:
+  if artifact_dir := os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', ''):
     with open(
         os.path.join(artifact_dir, f'test-client-process-{idx}.log'),
         'wb') as fp:

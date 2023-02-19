@@ -60,7 +60,7 @@ def _make_device_specs(
 
     if device_type.upper() != devices[0].device_type.upper():
       raise ValueError(
-          f'Conflicting devices {str(devices)} and device_type {device_type}')
+          f'Conflicting devices {devices} and device_type {device_type}')
 
   return devices, device_type
 
@@ -166,15 +166,12 @@ def create_distributed_mesh(
     raise ValueError('Accelerators are uninitialized, please run '
                      'dtensor.initialize_accelerator_system() first.')
 
-  if device_type and device_type.upper() == 'TPU':
-    # TODO(b/185940495): Allow multi-mesh and partial on TPU.
-    # TPU meshes can only be configured through environment variables that
-    # reflect the actual TPU topology. Do not let users specify custom args.
-    if local_devices is not None:
-      raise ValueError(
-          f'Do not specify devices for {device_type.upper()} meshes. '
-          f'Using a partial list of devices for {device_type.upper()} '
-          f'is not supported.')
+  if (device_type and device_type.upper() == 'TPU'
+      and local_devices is not None):
+    raise ValueError(
+        f'Do not specify devices for {device_type.upper()} meshes. '
+        f'Using a partial list of devices for {device_type.upper()} '
+        f'is not supported.')
 
   device_specs, device_type = _make_device_specs(local_devices, device_type)
 

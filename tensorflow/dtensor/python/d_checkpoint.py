@@ -161,12 +161,11 @@ class _DSaver:  # pylint: disable=protected-access
           dtypes=tensor_dtypes)
     structured_restored_tensors = nest.pack_sequence_as(tensor_structure,
                                                         restored_tensors)
-    restore_ops = {}
-    for saveable, restored_tensors in zip(self._saveable_objects,
-                                          structured_restored_tensors):
-      restore_ops[saveable.name] = saveable.restore(
-          restored_tensors, restored_shapes=None)
-    return restore_ops
+    return {
+        saveable.name: saveable.restore(restored_tensors, restored_shapes=None)
+        for saveable, restored_tensors in zip(self._saveable_objects,
+                                              structured_restored_tensors)
+    }
 
 
 class _DCheckpointRestoreCoordinator(util._CheckpointRestoreCoordinator):  # pylint: disable=protected-access
@@ -200,7 +199,6 @@ class _DCheckpointRestoreCoordinator(util._CheckpointRestoreCoordinator):  # pyl
     """
     del registered_savers
 
-    restore_ops = []
     # Eagerly run restorations for Python state.
     if python_positions:
       # Lazily create the NewCheckpointReader, since this requires file access
@@ -211,15 +209,16 @@ class _DCheckpointRestoreCoordinator(util._CheckpointRestoreCoordinator):  # pyl
         key = position.object_proto.attributes[0].checkpoint_key
         position.trackable.deserialize(reader.get_tensor(key))
 
+    restore_ops = []
     # If we have new SaveableObjects, extract and cache restore ops.
     if tensor_saveables:
       validated_saveables = saveable_object_util.validate_and_slice_inputs(
           tensor_saveables)
-      validated_names = set(saveable.name for saveable in validated_saveables)
+      validated_names = {saveable.name for saveable in validated_saveables}
       if set(tensor_saveables.keys()) != validated_names:
         raise AssertionError(
-            ("Saveable keys changed when validating. Got back %s, was "
-             "expecting %s") % (tensor_saveables.keys(), validated_names))
+            f"Saveable keys changed when validating. Got back {tensor_saveables.keys()}, was expecting {validated_names}"
+        )
       # DTensor change: Use _DSaver that does restore on DTensor with
       # customized DTensorRestoreV2 op.
       new_restore_ops = _DSaver(self._mesh, validated_saveables).restore(
@@ -319,10 +318,7 @@ class DTrackableSaver(util.TrackableSaver):
       return util.InitializationOnlyStatus(self._graph_view, ops.uid())
     reader = py_checkpoint_reader.NewCheckpointReader(save_path)
     graph_building = not context.executing_eagerly()
-    if graph_building:
-      dtype_map = None
-    else:
-      dtype_map = reader.get_variable_to_dtype_map()
+    dtype_map = None if graph_building else reader.get_variable_to_dtype_map()
     try:
       object_graph_string = reader.get_tensor(base.OBJECT_GRAPH_PROTO_KEY)
     except errors_impl.NotFoundError:
@@ -381,13 +377,12 @@ class DTrackableSaver(util.TrackableSaver):
           # Root dependency is automatically added to attached dependencies --
           # this can be ignored since it maps back to the root object.
           continue
-        proto_id = None
-        # Find proto ID of attached dependency (if it is in the proto).
-        for proto_ref in object_graph_proto.nodes[0].children:
-          if proto_ref.local_name == ref.name:
-            proto_id = proto_ref.node_id
-            break
-
+        proto_id = next(
+            (proto_ref.node_id
+             for proto_ref in object_graph_proto.nodes[0].children
+             if proto_ref.local_name == ref.name),
+            None,
+        )
         if proto_id in checkpoint.object_by_proto_id:
           # Object has already been restored. This can happen when there's an
           # indirect connection from the attached object to the root.
@@ -396,11 +391,8 @@ class DTrackableSaver(util.TrackableSaver):
         restore_lib.CheckpointPosition(
             checkpoint=checkpoint, proto_id=proto_id).restore(ref.ref)
 
-    load_status = util.CheckpointLoadStatus(
-        checkpoint,
-        graph_view=self._graph_view,
-        feed_dict=file_prefix_feed_dict)
-    return load_status
+    return util.CheckpointLoadStatus(
+        checkpoint, graph_view=self._graph_view, feed_dict=file_prefix_feed_dict)
 
 
 @deprecation.deprecated(

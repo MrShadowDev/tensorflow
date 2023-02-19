@@ -34,9 +34,8 @@ class MyCustomClass(serialization.Serializable):
     return MyCustomClass(proto.index, proto.name)
 
   def experimental_as_proto(self):
-    proto = serialization_test_pb2.MyCustomRepresentation(
+    return serialization_test_pb2.MyCustomRepresentation(
         index=self.index, name=self.name)
-    return proto
 
 
 serialization.register_serializable(MyCustomClass)
@@ -60,9 +59,8 @@ class MyCompositeClass(serialization.Serializable):
     serialized_elements = [
         serialization.serialize(element) for element in self.elements
     ]
-    proto = serialization_test_pb2.MyCompositeRepresentation(
+    return serialization_test_pb2.MyCompositeRepresentation(
         elements=serialized_elements)
-    return proto
 
 serialization.register_serializable(MyCompositeClass)
 

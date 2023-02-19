@@ -47,8 +47,7 @@ class ToyModule(module.Module):
   def toy(self, x):
     with ops.device('/device:TPU:0'):
       w = self.w.read_value()
-    r = math_ops.matmul(x, w, name='result')
-    return r
+    return math_ops.matmul(x, w, name='result')
 
 
 def main(argv):

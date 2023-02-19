@@ -62,9 +62,8 @@ def get_use_xla_spmd(device_type):
   Returns:
     bool: True when device_type is TPU and environment variable is set.
   """
-  return device_type == 'TPU' and '0' != os.environ.get(
-      'DTENSOR_TEST_USE_XLA_SPMD', '0'
-  )
+  return (device_type == 'TPU'
+          and os.environ.get('DTENSOR_TEST_USE_XLA_SPMD', '0') != '0')
 
 
 def create_device_ids_array(shape):
@@ -197,8 +196,8 @@ class DTensorBaseTest(tf_test.TestCase, parameterized.TestCase):
     def get_mesh(device_type):
       mesh = device_type_mesh_map.get(device_type, None)
       if mesh is None:
-        raise ValueError('Requires a %s mesh to run test on %s.' %
-                         (device_type, device_type))
+        raise ValueError(
+            f'Requires a {device_type} mesh to run test on {device_type}.')
       return mesh
 
     mesh = None
@@ -231,15 +230,17 @@ class DTensorBaseTest(tf_test.TestCase, parameterized.TestCase):
         device_type is "TPU". If set, the test will be skipped unless the number
         of TPUs equals to the specified count.
     """
-    physical_device_types = set(
-        [d.device_type for d in tf_config.list_physical_devices()])
+    physical_device_types = {
+        d.device_type
+        for d in tf_config.list_physical_devices()
+    }
     for device in device_type:
-      if device == 'TPU' and is_tpu_present():
-        if unless_device_count_equals_to is None:
-          self.skipTest(reason)
-        elif len(list_local_logical_devices(
-            device)) != unless_device_count_equals_to:
-          self.skipTest(reason)
+      if (device == 'TPU' and is_tpu_present()
+          and (unless_device_count_equals_to is None
+               or unless_device_count_equals_to is not None
+               and len(list_local_logical_devices(device)) !=
+               unless_device_count_equals_to)):
+        self.skipTest(reason)
       if device == 'CPU' and len(
           physical_device_types) == 1 and 'CPU' in physical_device_types:
         # Make sure we skip when only `CPU` is present.
